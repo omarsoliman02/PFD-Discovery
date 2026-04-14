@@ -1,0 +1,835 @@
+\documentclass[12pt,a4paper]{article}
+
+% ============================================================
+% PACKAGES
+% ============================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\geometry{margin=2.5cm, headheight=14.5pt}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tcolorbox}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{tabularx}
+
+% ============================================================
+% CONFIGURATION
+% ============================================================
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!70!black,
+    citecolor=blue!70!black,
+    urlcolor=blue!60!black,
+}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.95}
+
+\lstset{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{blue},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\small,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    frame=single,
+    language=Python,
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small Qualit\'{e} de Donn\'{e}es, Data Wrangling}
+\fancyhead[R]{\small Universit\'{e} Paris Dauphine -- PSL}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ============================================================
+% PAGE DE TITRE
+% ============================================================
+\begin{document}
+
+\begin{titlepage}
+\centering
+\vspace*{1cm}
+
+{\large \textsc{Universit\'{e} Paris Dauphine -- PSL}}\\[0.3cm]
+{\large \textsc{LAMSADE}}\\[0.5cm]
+{\normalsize Master -- Module : \textbf{Qualit\'{e} de Donn\'{e}es, Data Wrangling}}\\[0.3cm]
+{\normalsize Encadrant : \textbf{Khalid Belhajjame}}\\[2cm]
+
+\rule{\linewidth}{0.5mm}\\[0.6cm]
+{\Huge \textbf{D\'{e}couverte de Pattern Functional Dependencies}}\\[0.3cm]
+{\Large \textbf{Approche Classique vs.\ Agentique (IA)}}\\[0.3cm]
+\rule{\linewidth}{0.5mm}\\[2cm]
+
+{\large
+\begin{tabular}{ll}
+\textbf{SOLIMAN} Omar & \textbf{DERRADJI} Fahd \\[0.2cm]
+\textbf{HADDAR} Djena & \textbf{TSOULI} Abderrahmane \\[0.2cm]
+\multicolumn{2}{c}{\textbf{KARAOUANE} Guillaume}
+\end{tabular}
+}\\[3cm]
+
+{\large Ann\'{e}e universitaire 2025 -- 2026}\\[1cm]
+
+\vfill
+\end{titlepage}
+
+% ============================================================
+% TABLE DES MATIERES
+% ============================================================
+\tableofcontents
+\newpage
+
+% ============================================================
+% 1. INTRODUCTION
+% ============================================================
+\section{Introduction}
+
+\subsection{Contexte et motivations}
+
+La qualit\'{e} des donn\'{e}es est un enjeu majeur dans les syst\`{e}mes d'information modernes. Les \textbf{d\'{e}pendances fonctionnelles} (FDs) constituent un outil fondamental pour d\'{e}tecter les anomalies, nettoyer les donn\'{e}es et comprendre la structure s\'{e}mantique d'un jeu de donn\'{e}es. Cependant, les FDs classiques comparent des \textbf{valeurs enti\`{e}res} et ne capturent pas les r\'{e}gularit\'{e}s au niveau des \textit{patterns} (pr\'{e}fixes, tokens, sous-cha\^{i}nes).
+
+Les \textbf{Pattern Functional Dependencies} (PFDs) g\'{e}n\'{e}ralisent les FDs en utilisant des transformations sur les valeurs. Par exemple, la r\`{e}gle \texttt{prefix(zip, 3) $\rightarrow$ city} exprime que les 3 premiers chiffres d'un code postal d\'{e}terminent g\'{e}n\'{e}ralement la ville --- une r\'{e}gularit\'{e} invisible aux FDs classiques.
+
+\subsection{Objectifs du projet}
+
+Ce projet poursuit deux objectifs principaux :
+
+\begin{enumerate}[label=\arabic*.]
+    \item \textbf{Impl\'{e}menter un algorithme classique} de d\'{e}couverte de PFDs, suivant un pipeline en 5 \'{e}tapes : extraction de patterns, groupement, g\'{e}n\'{e}ration de candidats, validation et g\'{e}n\'{e}ralisation.
+    \item \textbf{Concevoir et impl\'{e}menter une approche agentique} utilisant des LLMs (Large Language Models) locaux pour guider intelligemment la recherche de PFDs, et comparer les r\'{e}sultats avec l'approche classique.
+\end{enumerate}
+
+Nous comparons deux LLMs locaux --- \textbf{Mistral 7B} et \textbf{Llama 3.1 8B} --- ex\'{e}cut\'{e}s via Ollama, sur 14 datasets r\'{e}els couvrant trois domaines : gouvernance de donn\'{e}es, chimie/biologie mol\'{e}culaire et validation.
+
+\subsection{Organisation du rapport}
+
+La section~\ref{sec:concepts} pr\'{e}sente les concepts th\'{e}oriques fondamentaux. La section~\ref{sec:architecture} d\'{e}crit l'architecture du syst\`{e}me. La section~\ref{sec:classique} d\'{e}taille l'approche classique. La section~\ref{sec:agentique} pr\'{e}sente l'approche agentique. La section~\ref{sec:resultats} analyse les r\'{e}sultats exp\'{e}rimentaux. La section~\ref{sec:discussion} discute les enseignements et limites. La section~\ref{sec:conclusion} conclut le rapport.
+
+% ============================================================
+% 2. CONCEPTS THEORIQUES
+% ============================================================
+\section{Concepts th\'{e}oriques}
+\label{sec:concepts}
+
+\subsection{D\'{e}pendances fonctionnelles classiques}
+
+\begin{tcolorbox}[colback=blue!5!white, colframe=blue!50!black, title=D\'{e}finition -- D\'{e}pendance Fonctionnelle]
+Soit une relation $R$ sur un sch\'{e}ma $\mathcal{S}$. Une \textbf{d\'{e}pendance fonctionnelle} $X \rightarrow Y$ (o\`{u} $X, Y \subseteq \mathcal{S}$) tient si et seulement si :
+$$\forall t_1, t_2 \in R : t_1[X] = t_2[X] \Rightarrow t_1[Y] = t_2[Y]$$
+\end{tcolorbox}
+
+En d'autres termes, si deux tuples ont la m\^{e}me valeur sur $X$, ils doivent avoir la m\^{e}me valeur sur $Y$. Par exemple, dans une table d'employ\'{e}s, \texttt{Department $\rightarrow$ Department Name} signifie que le code du d\'{e}partement d\'{e}termine de mani\`{e}re unique son nom complet.
+
+\textbf{Limites des FDs classiques :}
+\begin{itemize}
+    \item Elles comparent des \textbf{valeurs enti\`{e}res} uniquement.
+    \item Elles ne d\'{e}tectent pas que les pr\'{e}noms commen\c{c}ant par \og{}John\fg{} sont masculins.
+    \item Elles ne capturent pas que les codes postaux avec le m\^{e}me pr\'{e}fixe de 3 chiffres correspondent \`{a} la m\^{e}me ville.
+\end{itemize}
+
+\subsection{Pattern Functional Dependencies (PFDs)}
+
+\begin{tcolorbox}[colback=green!5!white, colframe=green!50!black, title=D\'{e}finition -- Pattern Functional Dependency]
+Une PFD $R(X \rightarrow Y, T_p)$ g\'{e}n\'{e}ralise les FDs en utilisant un \textbf{tableau de patterns} $T_p$. Elle tient si :
+$$\forall t_1, t_2 \in R : T_p(t_1[X]) = T_p(t_2[X]) \Rightarrow t_1[Y] = t_2[Y]$$
+o\`{u} $T_p$ est une transformation appliqu\'{e}e aux valeurs de $X$.
+\end{tcolorbox}
+
+\textbf{Exemples concrets :}
+\begin{itemize}
+    \item \texttt{first\_token(name) $\rightarrow$ gender} : le pr\'{e}nom d\'{e}termine le genre
+    \item \texttt{prefix(zip, 3) $\rightarrow$ city} : les 3 premiers chiffres du code postal d\'{e}terminent la ville
+    \item \texttt{first\_token(ref\_id) $\rightarrow$ ref\_type} : le premier token d'un identifiant de r\'{e}f\'{e}rence d\'{e}termine son type (PubMed, DailyMed, etc.)
+\end{itemize}
+
+\subsection{PFDs approximatives : support et confidence}
+\label{subsec:metrics}
+
+Les donn\'{e}es r\'{e}elles contiennent du \textbf{bruit}. Une PFD ne tient donc pas \`{a} 100\%. On utilise deux m\'{e}triques pour quantifier la qualit\'{e} d'une PFD approximative :
+
+\begin{tcolorbox}[colback=orange!5!white, colframe=orange!50!black, title=M\'{e}triques de qualit\'{e}]
+\textbf{Support} : nombre de tuples couverts par les groupes form\'{e}s par le pattern $X$ :
+$$\text{support}(X) = \sum_{g \in \text{Groups}(X)} |g|$$
+
+\textbf{Confidence} : proportion de tuples \og{}coh\'{e}rents\fg{} (qui respectent la d\'{e}pendance) :
+$$\text{conf}(X \rightarrow Y) = \frac{\sum_{g \in \text{Groups}(X)} \text{count}(\text{majority}_Y(g))}{\sum_{g \in \text{Groups}(X)} |g|}$$
+
+\textbf{Bruit (Noise)} : taux de violation, compl\'{e}mentaire de la confidence :
+$$\text{noise} = 1 - \text{conf}(X \rightarrow Y)$$
+\end{tcolorbox}
+
+On ne retient une PFD que si elle satisfait deux seuils :
+\begin{itemize}
+    \item $\text{support} \geq K$ (dans nos exp\'{e}riences, $K = 5$)
+    \item $\text{confidence} \geq \theta$ (dans nos exp\'{e}riences, $\theta = 0.85$)
+\end{itemize}
+
+\subsection{Transformations utilis\'{e}es}
+
+Notre syst\`{e}me supporte 7 types de transformations, r\'{e}sum\'{e}s dans le tableau~\ref{tab:transformations}.
+
+\begin{table}[H]
+\centering
+\caption{Les 7 transformations support\'{e}es par le syst\`{e}me}
+\label{tab:transformations}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Transformation} & \textbf{Notation} & \textbf{Exemple} & \textbf{Usage typique} \\
+\midrule
+Identity & \texttt{identity(col)} & \og{}Chicago\fg{} $\to$ \og{}Chicago\fg{} & Colonnes cat\'{e}goriques \\
+Prefix & \texttt{prefix(col, k)} & \texttt{prefix("90012", 3)} $\to$ \og{}900\fg{} & Codes postaux \\
+Suffix & \texttt{suffix(col, k)} & \texttt{suffix("report.pdf", 3)} $\to$ \og{}pdf\fg{} & Extensions \\
+First token & \texttt{first\_token(col)} & \og{}John Smith\fg{} $\to$ \og{}John\fg{} & Pr\'{e}noms \\
+Last token & \texttt{last\_token(col)} & \og{}John Smith\fg{} $\to$ \og{}Smith\fg{} & Noms de famille \\
+Numeric prefix & \texttt{numeric\_prefix(col, k)} & \og{}ZIP-90012\fg{} $\to$ \og{}900\fg{} & Donn\'{e}es bruit\'{e}es \\
+Length & \texttt{length(col)} & \og{}Hello\fg{} $\to$ \og{}5\fg{} & Longueur de cha\^{i}ne \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================
+% 3. ARCHITECTURE
+% ============================================================
+\section{Architecture du syst\`{e}me}
+\label{sec:architecture}
+
+\subsection{Vue d'ensemble}
+
+Le projet est organis\'{e} en modules Python ind\'{e}pendants et r\'{e}utilisables, totalisant environ \textbf{1\,400 lignes de code} r\'{e}parties sur 14 fichiers. L'architecture suit une s\'{e}paration nette entre le c\oe{}ur algorithmique, l'int\'{e}gration LLM et les scripts d'exp\'{e}rimentation.
+
+\begin{table}[H]
+\centering
+\caption{Organisation des modules du projet}
+\label{tab:modules}
+\begin{tabular}{@{}lrl@{}}
+\toprule
+\textbf{Module} & \textbf{Lignes} & \textbf{R\^{o}le} \\
+\midrule
+\texttt{data\_loader.py} & 45 & Chargement CSV et introspection du sch\'{e}ma \\
+\texttt{pattern\_extraction.py} & 152 & D\'{e}finition et application des 7 transformations \\
+\texttt{pattern\_grouping.py} & 38 & Groupement des tuples par pattern \\
+\texttt{candidate\_generation.py} & 43 & G\'{e}n\'{e}ration des paires candidats $(T_X, Y)$ \\
+\texttt{validation.py} & 110 & Calcul du support et de la confidence \\
+\texttt{generalization.py} & 87 & Fusion et d\'{e}duplication des PFDs \\
+\texttt{classical\_pipeline.py} & 87 & Orchestration du pipeline en 5 \'{e}tapes \\
+\texttt{llm\_agent.py} & 216 & Int\'{e}gration Mistral/Llama via Ollama \\
+\texttt{agentic\_workflow.py} & 261 & Workflows agentiques 1 et 2 \\
+\texttt{evaluation.py} & 124 & M\'{e}triques et comparaison \\
+\midrule
+\textit{Total \texttt{src/}} & \textit{1\,163} & \\
+\midrule
+\texttt{run\_classical.py} & 60 & Script d'exp\'{e}rimentation classique \\
+\texttt{run\_agentic.py} & 95 & Script d'exp\'{e}rimentation agentique \\
+\texttt{compare\_results.py} & 103 & Script de comparaison \\
+\midrule
+\textit{Total g\'{e}n\'{e}ral} & \textit{1\,421} & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Technologies utilis\'{e}es}
+
+\begin{table}[H]
+\centering
+\caption{Stack technologique}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Technologie} & \textbf{Usage} \\
+\midrule
+Python 3.10+ & Langage principal \\
+pandas & Manipulation de donn\'{e}es tabulaires \\
+Ollama & Serveur de LLMs locaux (REST API sur \texttt{localhost:11434}) \\
+Mistral 7B & LLM local -- 7 milliards de param\`{e}tres ($\sim$4.4~Go) \\
+Llama 3.1 8B & LLM local -- 8 milliards de param\`{e}tres ($\sim$4.9~Go) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Le choix de LLMs locaux (via Ollama) nous permet de travailler \textbf{sans quota}, \textbf{sans cl\'{e} API}, et \textbf{hors-ligne}. Les deux mod\`{e}les tournent confortablement sur un MacBook Air M2 avec 16~Go de RAM.
+
+\subsection{Datasets}
+
+Nous utilisons \textbf{14 fichiers CSV} r\'{e}partis en 3 cat\'{e}gories, repr\'{e}sentant un total de \textbf{46\,351 lignes} et \textbf{103 colonnes} (tableau~\ref{tab:datasets}).
+
+\begin{table}[H]
+\centering
+\caption{Datasets utilis\'{e}s}
+\label{tab:datasets}
+\small
+\begin{tabular}{@{}lrrll@{}}
+\toprule
+\textbf{Cat\'{e}gorie} & \textbf{Fichier} & \textbf{Lignes} & \textbf{Colonnes} & \textbf{Domaine} \\
+\midrule
+\multirow{4}{*}{\texttt{pfd\_validation/}}
+  & \texttt{US\_Phone\_Code.csv} & 51 & 3 & T\'{e}l\'{e}phone US \\
+  & \texttt{t1.csv} & 9\,101 & 9 & Employ\'{e}s gouvernementaux \\
+  & \texttt{t2.csv} & 3\,502 & 13 & Entreprises commerciales \\
+  & \texttt{t3.csv} & 1\,077 & 9 & Licences commerciales \\
+\midrule
+\multirow{5}{*}{\texttt{CHE/}}
+  & \texttt{mechanism\_refs.csv} & 9\,536 & 5 & R\'{e}f\'{e}rences pharmaceutiques \\
+  & \texttt{metabolism\_refs.csv} & 2\,409 & 5 & M\'{e}tabolisme m\'{e}dicaments \\
+  & \texttt{protein\_classification.csv} & 858 & 7 & Taxonomie prot\'{e}ines \\
+  & \texttt{research\_companies.csv} & 812 & 5 & Entreprises pharma \\
+  & \texttt{variant\_sequences.csv} & 1\,200 & 7 & Variants de s\'{e}quences \\
+\midrule
+\multirow{5}{*}{\texttt{DGOV/}}
+  & \texttt{570-1.csv} & 9\,101 & 9 & Employ\'{e}s gouvernementaux \\
+  & \texttt{10492-1.csv} & 1\,077 & 9 & Licences commerciales \\
+  & \texttt{10642-1.csv} & 920 & 6 & Agences d'emploi \\
+  & \texttt{6339-1.csv} & 306 & 7 & Statistiques criminalit\'{e} \\
+  & \texttt{6397-1.csv} & 6\,704 & 9 & Donn\'{e}es d\'{e}mographiques \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================
+% 4. APPROCHE CLASSIQUE
+% ============================================================
+\section{Approche classique}
+\label{sec:classique}
+
+\subsection{Pipeline en 5 \'{e}tapes}
+
+L'approche classique suit un pipeline s\'{e}quentiel en 5 \'{e}tapes, illustr\'{e} par la figure~\ref{fig:pipeline}.
+
+\begin{figure}[H]
+\centering
+\begin{tcolorbox}[colback=gray!5!white, colframe=gray!50!black, width=0.95\textwidth]
+\centering
+\texttt{Donn\'{e}es CSV} $\xrightarrow{\text{\'{e}tape 1}}$ \textbf{Extraction} $\xrightarrow{\text{\'{e}tape 2}}$ \textbf{Groupement} $\xrightarrow{\text{\'{e}tape 3}}$ \textbf{Candidats} $\xrightarrow{\text{\'{e}tape 4}}$ \textbf{Validation} $\xrightarrow{\text{\'{e}tape 5}}$ \textbf{G\'{e}n\'{e}ralisation} $\rightarrow$ \texttt{PFDs}
+\end{tcolorbox}
+\caption{Pipeline classique de d\'{e}couverte de PFDs}
+\label{fig:pipeline}
+\end{figure}
+
+\subsubsection{\'{E}tape 1 : Extraction de patterns}
+
+Pour chaque colonne du dataset, le syst\`{e}me g\'{e}n\`{e}re automatiquement les transformations pertinentes. La fonction \texttt{generate\_default\_transformations()} analyse chaque colonne et produit :
+
+\begin{itemize}
+    \item \texttt{identity} pour toutes les colonnes.
+    \item \texttt{first\_token} et \texttt{last\_token} si la colonne contient des espaces ou virgules (noms, adresses).
+    \item \texttt{prefix(col, k)} pour $k \in [1, \min(\overline{L}, 5)]$ o\`{u} $\overline{L}$ est la longueur moyenne des valeurs.
+    \item \texttt{numeric\_prefix(col, k)} si la colonne contient des chiffres.
+    \item \texttt{length} pour toutes les colonnes.
+\end{itemize}
+
+\textbf{Exemple :} sur \texttt{t1.csv} (9 colonnes), cette \'{e}tape g\'{e}n\`{e}re environ \textbf{60 transformations}.
+
+\subsubsection{\'{E}tape 2--3 : G\'{e}n\'{e}ration de candidats}
+
+Le syst\`{e}me forme le produit cart\'{e}sien des transformations et des colonnes cibles, en excluant les auto-d\'{e}pendances triviales (\texttt{identity(X) $\rightarrow$ X}). Pour \texttt{t1.csv}, cela produit $\sim$\textbf{544 candidats}.
+
+\subsubsection{\'{E}tape 4 : Validation}
+
+L'algorithme de validation est le c\oe{}ur du syst\`{e}me. Pour chaque candidat $T(X) \rightarrow Y$ :
+
+\begin{algorithm}[H]
+\caption{Validation d'un candidat PFD}
+\label{algo:validation}
+\begin{algorithmic}[1]
+\REQUIRE DataFrame $D$, transformation $T$, colonne cible $Y$, seuils $K$, $\theta$
+\ENSURE PFDResult ou $\bot$
+\STATE $\textit{groups} \leftarrow \text{groupBy}(D, T)$ \COMMENT{Grouper par pattern}
+\STATE Filtrer les groupes avec $|g| < K$
+\STATE $\textit{total} \leftarrow 0$, $\textit{consistent} \leftarrow 0$
+\FOR{chaque groupe $g$ dans $\textit{groups}$}
+    \STATE $\textit{counts} \leftarrow \text{valueCounts}(g[Y])$
+    \STATE $\textit{majority} \leftarrow \max(\textit{counts})$
+    \STATE $\textit{total} \leftarrow \textit{total} + |g|$
+    \STATE $\textit{consistent} \leftarrow \textit{consistent} + \textit{majority}$
+\ENDFOR
+\STATE $\textit{conf} \leftarrow \textit{consistent} / \textit{total}$
+\IF{$\textit{total} \geq K$ \AND $\textit{conf} \geq \theta$}
+    \RETURN PFDResult($T$, $Y$, $\textit{total}$, $\textit{conf}$)
+\ELSE
+    \RETURN $\bot$
+\ENDIF
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Complexit\'{e}} : $\mathcal{O}(C \times n \log n)$ o\`{u} $C$ est le nombre de candidats et $n$ le nombre de lignes.
+
+\subsubsection{\'{E}tape 5 : G\'{e}n\'{e}ralisation}
+
+La g\'{e}n\'{e}ralisation \'{e}limine les PFDs redondantes via trois strat\'{e}gies :
+
+\begin{enumerate}
+    \item \textbf{Pr\'{e}fixes :} parmi \texttt{prefix(col, 1)}, \texttt{prefix(col, 2)}, ..., garder le plus court avec une confidence $\geq$ (meilleure confidence $- 0.05$).
+    \item \textbf{Subsomption :} si \texttt{identity(col)} a une bonne confidence, elle subsume les transformations sur la m\^{e}me colonne.
+    \item \textbf{D\'{e}duplication :} \'{e}liminer les doublons par type de transformation et colonne cible.
+\end{enumerate}
+
+\textbf{Exemple :} sur \texttt{t1.csv}, la g\'{e}n\'{e}ralisation r\'{e}duit \textbf{143 PFDs valides} \`{a} \textbf{85 PFDs g\'{e}n\'{e}ralis\'{e}es}.
+
+% ============================================================
+% 5. APPROCHE AGENTIQUE
+% ============================================================
+\section{Approche agentique}
+\label{sec:agentique}
+
+\subsection{Principe g\'{e}n\'{e}ral}
+
+L'id\'{e}e centrale est de combiner la \textbf{rigueur algorithmique} du pipeline classique avec le \textbf{raisonnement s\'{e}mantique} d'un LLM. Le mod\`{e}le de langage analyse les noms de colonnes et des \'{e}chantillons de valeurs pour sugg\'{e}rer des transformations \textit{pertinentes}, r\'{e}duisant ainsi l'espace de recherche.
+
+Nous impl\'{e}mentons deux workflows distincts, de complexit\'{e} croissante.
+
+\subsection{Int\'{e}gration LLM via Ollama}
+
+Les deux LLMs sont appel\'{e}s via l'API REST d'Ollama (\texttt{POST /api/generate}). Chaque appel envoie un prompt structur\'{e} et re\c{c}oit une r\'{e}ponse en JSON. Les param\`{e}tres utilis\'{e}s :
+\begin{itemize}
+    \item \texttt{temperature} = 0.1 (r\'{e}ponses d\'{e}terministes, peu de variabilit\'{e})
+    \item \texttt{num\_predict} = 4\,096 (longueur maximale de la r\'{e}ponse)
+    \item \texttt{stream} = false (r\'{e}ponse compl\`{e}te en une fois)
+\end{itemize}
+
+\subsection{Workflow 1 : Feature-Enriched Discovery}
+
+\begin{tcolorbox}[colback=blue!5!white, colframe=blue!50!black, title=Workflow 1 -- Feature-Enriched Discovery]
+\begin{center}
+\texttt{Table $R$} $\rightarrow$ \fbox{\textbf{Agent LLM}} $\rightarrow$ \textit{Transformations sugg\'{e}r\'{e}es} $\rightarrow$ \fbox{\textbf{Algo classique}} $\rightarrow$ \texttt{PFDs}
+\end{center}
+\end{tcolorbox}
+
+\textbf{Fonctionnement d\'{e}taill\'{e} :}
+
+\begin{enumerate}
+    \item \textbf{Analyse du sch\'{e}ma} : le syst\`{e}me extrait pour chaque colonne le nombre de valeurs uniques et 5 \'{e}chantillons de valeurs.
+    \item \textbf{Appel LLM} : un prompt structur\'{e} demande au LLM de sugg\'{e}rer des transformations pertinentes parmi les 7 types disponibles, avec justification.
+    \item \textbf{Parsing} : les suggestions JSON sont converties en objets \texttt{Transformation}.
+    \item \textbf{Pipeline classique} : les \'{e}tapes 2 \`{a} 5 du pipeline classique sont ex\'{e}cut\'{e}es avec les transformations sugg\'{e}r\'{e}es par l'agent.
+\end{enumerate}
+
+\textbf{Exemple de suggestion (Mistral sur t1.csv) :}
+\begin{lstlisting}[language={},basicstyle=\ttfamily\small]
+{
+  "name": "first_token",
+  "column": "Full Name",
+  "params": {},
+  "reason": "Le premier mot du nom complet est le prenom"
+}
+\end{lstlisting}
+
+\subsection{Workflow 2 : Guided Search}
+
+\begin{tcolorbox}[colback=green!5!white, colframe=green!50!black, title=Workflow 2 -- Guided Search]
+\begin{center}
+\texttt{Table $R$} $\rightarrow$ \fbox{\textbf{Agent LLM}} $\rightarrow$ \textit{Transformations + Candidats prioritaires} $\rightarrow$ \fbox{\textbf{Algo : valide}} $\rightarrow$ \texttt{PFDs}
+\end{center}
+\end{tcolorbox}
+
+Le Workflow 2 va plus loin : apr\`{e}s avoir sugg\'{e}r\'{e} les transformations, l'agent \textbf{priorise les paires} $(T_X, Y)$ les plus prometteuses. Seuls les candidats jug\'{e}s \texttt{high} ou \texttt{medium} par le LLM sont valid\'{e}s.
+
+\textbf{Exemple de priorisation (Llama sur t1.csv) :}
+\begin{lstlisting}[language={},basicstyle=\ttfamily\small]
+{
+  "x_transformation": "prefix(Full Name, 1)",
+  "y_column": "Gender",
+  "priority": "high",
+  "reason": "Le premier token du nom determine le sexe"
+}
+\end{lstlisting}
+
+\subsection{Comparaison des workflows}
+
+\begin{table}[H]
+\centering
+\caption{Comparaison structurelle des trois approches}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+& \textbf{Classique} & \textbf{Workflow 1} & \textbf{Workflow 2} \\
+\midrule
+Choix des transformations & Automatique & \textbf{LLM} & \textbf{LLM} \\
+S\'{e}lection des candidats & Exhaustive & Exhaustive & \textbf{LLM} \\
+Validation & Algorithmique & Algorithmique & Algorithmique \\
+G\'{e}n\'{e}ralisation & Algorithmique & Algorithmique & Algorithmique \\
+Appels LLM & 0 & 1 & 2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================
+% 6. RESULTATS EXPERIMENTAUX
+% ============================================================
+\section{R\'{e}sultats exp\'{e}rimentaux}
+\label{sec:resultats}
+
+\subsection{Param\`{e}tres exp\'{e}rimentaux}
+
+Toutes les exp\'{e}riences utilisent les m\^{e}mes param\`{e}tres :
+\begin{itemize}
+    \item Support minimum : $K = 5$
+    \item Confidence minimum : $\theta = 0.85$
+    \item Longueur maximale des pr\'{e}fixes : 4
+    \item Machine : MacBook Air M2, 16~Go RAM
+\end{itemize}
+
+\subsection{R\'{e}sultats de l'approche classique}
+
+Le tableau~\ref{tab:classical_results} pr\'{e}sente les r\'{e}sultats de l'approche classique sur les 14 datasets.
+
+\begin{table}[H]
+\centering
+\caption{R\'{e}sultats de l'approche classique sur les principaux datasets}
+\label{tab:classical_results}
+\small
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+\textbf{Dataset} & \textbf{Candidats} & \textbf{Valides} & \textbf{G\'{e}n\'{e}ralis\'{e}es} & \textbf{Temps (s)} & \textbf{Conf.\ max} \\
+\midrule
+t1.csv & 544 & 143 & 85 & 8.56 & 1.000 \\
+t2.csv & 1\,428 & 327 & 190 & 12.73 & 1.000 \\
+t3.csv & 704 & 105 & 63 & 2.78 & 1.000 \\
+mechanism\_refs.csv & 172 & 20 & 15 & 4.62 & 1.000 \\
+research\_companies.csv & 148 & 32 & 24 & 0.46 & 1.000 \\
+570-1.csv & 544 & 143 & 85 & 8.48 & 1.000 \\
+6397-1.csv & 800 & 24 & 22 & 8.63 & 1.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Exemples de PFDs d\'{e}couvertes}
+
+\textbf{Dataset t1.csv} (employ\'{e}s gouvernementaux, 9\,101 lignes) :
+
+\begin{table}[H]
+\centering
+\caption{Top PFDs d\'{e}couvertes sur t1.csv (classique)}
+\label{tab:pfds_t1}
+\begin{tabular}{@{}llrr@{}}
+\toprule
+\textbf{PFD} & & \textbf{Support} & \textbf{Confidence} \\
+\midrule
+\texttt{identity(Department)} & $\rightarrow$ \texttt{Department Name} & 9\,090 & 1.000 \\
+\texttt{identity(Department Name)} & $\rightarrow$ \texttt{Department} & 9\,090 & 1.000 \\
+\texttt{identity(Underfilled Job Title)} & $\rightarrow$ \texttt{Assignment Cat.} & 998 & 0.996 \\
+\texttt{numeric\_prefix(Division, 1)} & $\rightarrow$ \texttt{Assignment Cat.} & 2\,232 & 0.995 \\
+\texttt{identity(Division)} & $\rightarrow$ \texttt{Department} & 8\,527 & 0.987 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La PFD \texttt{identity(Department) $\rightarrow$ Department Name} est une FD classique parfaite : chaque code de d\'{e}partement d\'{e}termine de mani\`{e}re unique le nom du d\'{e}partement (confidence = 1.0, support = 9\,090).
+
+\textbf{Dataset t2.csv} (entreprises, 3\,502 lignes) :
+
+\begin{table}[H]
+\centering
+\caption{Top PFDs d\'{e}couvertes sur t2.csv (classique)}
+\begin{tabular}{@{}llrr@{}}
+\toprule
+\textbf{PFD} & & \textbf{Support} & \textbf{Confidence} \\
+\midrule
+\texttt{first\_token(FAX)} & $\rightarrow$ \texttt{COUNTRY} & 2\,239 & 1.000 \\
+\texttt{identity(NAME)} & $\rightarrow$ \texttt{COUNTRY} & 1\,994 & 1.000 \\
+\texttt{identity(PHONE)} & $\rightarrow$ \texttt{COUNTRY} & 1\,952 & 1.000 \\
+\texttt{identity(ADDRESS\_1)} & $\rightarrow$ \texttt{COUNTRY} & 1\,774 & 1.000 \\
+\texttt{last\_token(FAX)} & $\rightarrow$ \texttt{COUNTRY} & 1\,605 & 1.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Dataset mechanism\_refs.csv} (r\'{e}f\'{e}rences pharmaceutiques, 9\,536 lignes) :
+
+La PFD \texttt{first\_token(ref\_id) $\rightarrow$ ref\_type} (support = 1\,776, confidence = 1.0) capture le fait que le premier token d'un identifiant de r\'{e}f\'{e}rence d\'{e}termine son type (PubMed, DailyMed, Wikipedia).
+
+\subsection{R\'{e}sultats de l'approche agentique}
+
+\subsubsection{Comparaison globale sur t1.csv}
+
+Le tableau~\ref{tab:comparison} pr\'{e}sente la comparaison des 5 approches sur le dataset \texttt{t1.csv}.
+
+\begin{table}[H]
+\centering
+\caption{Comparaison des approches sur t1.csv (9\,101 employ\'{e}s)}
+\label{tab:comparison}
+\small
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+\textbf{Approche} & \textbf{PFDs} & \textbf{Parfaites} & \textbf{Candidats} & \textbf{Conf.\ moy} & \textbf{Supp.\ moy} & \textbf{Temps (s)} \\
+\midrule
+Classique & 85 & 2 & 544 & 0.913 & 7\,482 & 8.56 \\
+W1-Mistral & 23 & 2 & 72 & 0.931 & 6\,747 & 70.75 \\
+W2-Mistral & 10 & 0 & 34 & 0.939 & 5\,737 & 51.76 \\
+W1-Llama & 12 & 0 & 40 & 0.915 & 7\,804 & 62.52 \\
+W2-Llama & 21 & 2 & 74 & 0.934 & 7\,145 & 99.51 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Analyse de la r\'{e}duction de l'espace de recherche}
+
+L'un des avantages cl\'{e}s de l'approche agentique est la \textbf{r\'{e}duction drastique de l'espace de recherche} :
+
+\begin{table}[H]
+\centering
+\caption{R\'{e}duction de l'espace de recherche par rapport au classique}
+\label{tab:reduction}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Approche} & \textbf{Candidats} & \textbf{R\'{e}duction} & \textbf{PFDs trouv\'{e}es} \\
+\midrule
+Classique & 544 & -- & 85 \\
+W1-Mistral & 72 & $-86.8\%$ & 23 \\
+W2-Mistral & 34 & $-93.8\%$ & 10 \\
+W1-Llama & 40 & $-92.6\%$ & 12 \\
+W2-Llama & 74 & $-86.4\%$ & 21 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Le Workflow 2 avec Mistral r\'{e}duit l'espace de recherche de \textbf{93.8\%}, ne validant que 34 candidats au lieu de 544, tout en maintenant une confidence moyenne sup\'{e}rieure (\textbf{0.939} vs.\ 0.913).
+
+\subsubsection{Suggestions des agents}
+
+\textbf{Mistral} (Workflow 1, t1.csv) a sugg\'{e}r\'{e} \textbf{9 transformations}, incluant :
+\begin{itemize}
+    \item \texttt{first\_token(Full Name)} : \og{}le premier mot du nom complet est le pr\'{e}nom\fg{}
+    \item \texttt{prefix(Date First Hired, 7)} : \og{}les 7 premiers chiffres de la date d'embauche d\'{e}terminent l'ann\'{e}e\fg{}
+    \item \texttt{identity(Department)}, \texttt{identity(Division)}, etc.
+\end{itemize}
+
+\textbf{Llama} (Workflow 1, t1.csv) a sugg\'{e}r\'{e} \textbf{5 transformations}, incluant :
+\begin{itemize}
+    \item \texttt{first\_token(Full Name)} : \og{}le premier mot du nom complet est le pr\'{e}nom, souvent unique\fg{}
+    \item \texttt{suffix(Division, 20)} : \og{}les 20 derniers caract\`{e}res de la division indiquent la sp\'{e}cialisation\fg{}
+    \item \texttt{length(Position Title)} : \og{}la longueur du titre peut classer les employ\'{e}s par niveau\fg{}
+\end{itemize}
+
+On note que les deux LLMs identifient correctement \texttt{first\_token(Full Name)} comme transformation pertinente, mais divergent sur les transformations secondaires --- Llama propose des transformations plus originales (suffix, length) tandis que Mistral se concentre sur les identity.
+
+\subsubsection{Candidats prioritaires (Workflow 2)}
+
+\textbf{Mistral} a prioris\'{e} 4 candidats :
+\begin{enumerate}
+    \item \texttt{prefix(Department Name, 10) $\rightarrow$ Department} --- priorit\'{e} \texttt{high}
+    \item \texttt{prefix(Division, 35) $\rightarrow$ Division} --- priorit\'{e} \texttt{medium}
+    \item \texttt{prefix(Underfilled Job Title, 10) $\rightarrow$ Job Title} --- priorit\'{e} \texttt{medium}
+    \item \texttt{first\_token(Position Title) $\rightarrow$ Job Role} --- priorit\'{e} \texttt{low}
+\end{enumerate}
+
+\textbf{Llama} a prioris\'{e} 4 candidats :
+\begin{enumerate}
+    \item \texttt{prefix(Full Name, 1) $\rightarrow$ Gender} --- priorit\'{e} \texttt{high}
+    \item \texttt{first\_token(Department Name) $\rightarrow$ Department} --- priorit\'{e} \texttt{high}
+    \item \texttt{prefix(Date First Hired, 1) $\rightarrow$ Month of Hire} --- priorit\'{e} \texttt{medium}
+    \item \texttt{numeric\_prefix(Division, 1) $\rightarrow$ Division Type} --- priorit\'{e} \texttt{medium}
+\end{enumerate}
+
+Llama propose des candidats s\'{e}mantiquement plus riches (\texttt{prefix(Full Name, 1) $\rightarrow$ Gender} est une v\'{e}ritable PFD originale), tandis que Mistral reste plus conservateur.
+
+\subsection{Comparaison Mistral vs.\ Llama}
+
+\begin{table}[H]
+\centering
+\caption{Comparaison des deux LLMs}
+\label{tab:llm_comparison}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Crit\`{e}re} & \textbf{Mistral 7B} & \textbf{Llama 3.1 8B} \\
+\midrule
+Nombre de suggestions (W1) & 9 & 5 \\
+Conf.\ moyenne (W1) & 0.931 & 0.915 \\
+Candidats explor\'{e}s (W2) & 34 & 74 \\
+Conf.\ moyenne (W2) & 0.939 & 0.934 \\
+Temps moyen par workflow & $\sim$61s & $\sim$81s \\
+Style de suggestions & Conservateur & Cr\'{e}atif \\
+R\'{e}ponse JSON & Plus fiable & Parfois verbeux \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Mistral} produit des r\'{e}sultats plus \textbf{pr\'{e}cis} (confidence moyenne sup\'{e}rieure) avec un espace de recherche plus r\'{e}duit (34 candidats en W2). \textbf{Llama} propose des transformations plus \textbf{diversifi\'{e}es et originales} (suffix, length), mais explore un espace plus large (74 candidats en W2).
+
+% ============================================================
+% 7. DISCUSSION
+% ============================================================
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Avantages de l'approche agentique}
+
+\begin{enumerate}
+    \item \textbf{R\'{e}duction massive de l'espace de recherche} : les workflows agentiques explorent 87--94\% moins de candidats que l'approche classique, gr\^{a}ce au filtrage s\'{e}mantique du LLM.
+
+    \item \textbf{Confidence moyenne sup\'{e}rieure} : en se concentrant sur des candidats s\'{e}mantiquement pertinents, les approches agentiques obtiennent des PFDs de meilleure qualit\'{e} (0.931--0.939 vs.\ 0.913 en classique).
+
+    \item \textbf{Interpr\'{e}tabilit\'{e}} : chaque suggestion du LLM est accompagn\'{e}e d'une \textbf{justification en langage naturel}, facilitant l'interpr\'{e}tation des r\'{e}sultats.
+
+    \item \textbf{Filtrage des d\'{e}pendances triviales} : le LLM \'{e}vite les PFDs sans sens s\'{e}mantique (par exemple, \texttt{length(col) $\rightarrow$ col2} qui tiennent par co\"{i}ncidence).
+\end{enumerate}
+
+\subsection{Limites et compromis}
+
+\begin{enumerate}
+    \item \textbf{Temps d'ex\'{e}cution} : l'inf\'{e}rence LLM ajoute 50 \`{a} 100 secondes de surco\^{u}t (8.5s en classique vs.\ 51--100s en agentique). Ce surco\^{u}t est fixe et ne d\'{e}pend pas de la taille du dataset.
+
+    \item \textbf{Couverture} : l'approche classique d\'{e}couvre \textbf{85 PFDs} contre 10--23 en agentique. Certaines PFDs valides mais non intuitives sont manqu\'{e}es par le LLM.
+
+    \item \textbf{D\'{e}terminisme} : m\^{e}me avec une temp\'{e}rature tr\`{e}s basse (0.1), les r\'{e}ponses LLM peuvent varier l\'{e}g\`{e}rement entre ex\'{e}cutions.
+
+    \item \textbf{Parsing JSON} : les LLMs ne respectent pas toujours le format JSON demand\'{e}, n\'{e}cessitant un parsing robuste avec fallback (regex \texttt{$\backslash$\{[\textbackslash s\textbackslash S]*$\backslash$\}}).
+
+    \item \textbf{PFDs parfaites manqu\'{e}es} : W2-Mistral ne trouve aucune PFD parfaite (confidence = 1.0), alors que le classique en trouve 2. Le filtrage trop agressif du LLM peut exclure des d\'{e}pendances valides.
+\end{enumerate}
+
+\subsection{Analyse du compromis qualit\'{e}/exhaustivit\'{e}}
+
+Le tableau~\ref{tab:tradeoff} r\'{e}sume le compromis fondamental entre les approches.
+
+\begin{table}[H]
+\centering
+\caption{Compromis qualit\'{e} vs.\ exhaustivit\'{e}}
+\label{tab:tradeoff}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+& \textbf{Exhaustivit\'{e}} & \textbf{Pr\'{e}cision} & \textbf{Vitesse} & \textbf{Interpr\'{e}tabilit\'{e}} \\
+\midrule
+Classique & $\star\star\star$ & $\star\star$ & $\star\star\star$ & $\star$ \\
+Workflow 1 & $\star\star$ & $\star\star\star$ & $\star$ & $\star\star\star$ \\
+Workflow 2 & $\star$ & $\star\star\star$ & $\star\star$ & $\star\star\star$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+L'approche classique excelle en \textbf{exhaustivit\'{e}} et \textbf{vitesse}, tandis que les approches agentiques excellent en \textbf{pr\'{e}cision} et \textbf{interpr\'{e}tabilit\'{e}}. Le choix d\'{e}pend du cas d'usage : l'exploration exhaustive est pr\'{e}f\'{e}rable pour l'audit de qualit\'{e} de donn\'{e}es, tandis que l'approche agentique convient mieux \`{a} la d\'{e}couverte cibl\'{e}e de r\`{e}gles m\'{e}tier.
+
+\subsection{Reproductibilit\'{e}}
+
+Tous les r\'{e}sultats sont reproductibles :
+\begin{itemize}
+    \item Les LLMs sont ex\'{e}cut\'{e}s \textbf{localement} via Ollama (pas de d\'{e}pendance \`{a} des APIs cloud).
+    \item Les param\`{e}tres ($K=5$, $\theta=0.85$) sont fix\'{e}s dans les scripts.
+    \item Les r\'{e}sultats sont sauvegard\'{e}s en JSON avec horodatage.
+    \item Le code est publi\'{e} sur GitHub : \url{https://github.com/omarsoliman02/PFD-Discovery}
+\end{itemize}
+
+% ============================================================
+% 8. CONCLUSION
+% ============================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+Ce projet a permis d'impl\'{e}menter et de comparer deux paradigmes pour la d\'{e}couverte de PFDs :
+
+\begin{enumerate}
+    \item Un \textbf{pipeline classique} en 5 \'{e}tapes, explorant syst\'{e}matiquement toutes les combinaisons de transformations et de colonnes. Il d\'{e}couvre un grand nombre de PFDs (85 sur t1.csv) en un temps tr\`{e}s court (8.5s).
+
+    \item Deux \textbf{workflows agentiques} utilisant des LLMs locaux (Mistral 7B et Llama 3.1 8B) pour guider la recherche. Le Workflow~1 (Feature-Enriched) r\'{e}duit l'espace de recherche de $\sim$87\% et le Workflow~2 (Guided Search) de $\sim$94\%, tout en maintenant ou am\'{e}liorant la confidence moyenne.
+\end{enumerate}
+
+\textbf{Contributions principales :}
+\begin{itemize}
+    \item Impl\'{e}mentation compl\`{e}te en Python (1\,400+ lignes) avec modules r\'{e}utilisables.
+    \item Comparaison syst\'{e}matique sur 14 datasets r\'{e}els couvrant 3 domaines.
+    \item Comparaison de 2 LLMs (Mistral vs.\ Llama) mettant en \'{e}vidence des profils diff\'{e}rents : Mistral est plus pr\'{e}cis et compact, Llama est plus cr\'{e}atif et diversifi\'{e}.
+    \item D\'{e}monstration du compromis fondamental entre exhaustivit\'{e} (classique) et pr\'{e}cision s\'{e}mantique (agentique).
+\end{itemize}
+
+\textbf{Perspectives :}
+\begin{itemize}
+    \item Impl\'{e}menter un \textbf{Workflow 3 (Agent-in-the-Loop)} avec boucle it\'{e}rative de raffinement.
+    \item Tester des LLMs plus puissants (Mistral 8x7B, Llama 70B) pour am\'{e}liorer la qualit\'{e} des suggestions.
+    \item Explorer des m\'{e}triques de qualit\'{e} suppl\'{e}mentaires (interestingness, novelty) pour \'{e}valuer la pertinence s\'{e}mantique.
+    \item \'{E}tendre le syst\`{e}me \`{a} la d\'{e}couverte de PFDs \textbf{multi-colonnes} ($X_1, X_2 \rightarrow Y$).
+\end{itemize}
+
+% ============================================================
+% ANNEXES
+% ============================================================
+\newpage
+\appendix
+\section{Annexe : Guide d'utilisation}
+
+\subsection{Installation}
+
+\begin{lstlisting}[language=bash,caption={Installation du projet}]
+# Cloner le repository
+git clone https://github.com/omarsoliman02/PFD-Discovery.git
+cd PFD-Discovery
+
+# Installer les dependances Python
+pip install -r requirements.txt
+
+# Installer Ollama (modeles locaux)
+brew install ollama
+brew services start ollama
+ollama pull mistral        # Mistral 7B (~4.4 Go)
+ollama pull llama3.1       # Llama 3.1 8B (~4.9 Go)
+\end{lstlisting}
+
+\subsection{Ex\'{e}cution}
+
+\begin{lstlisting}[language=bash,caption={Commandes d'ex\'{e}cution}]
+# Approche classique sur tous les datasets
+python3 experiments/run_classical.py
+
+# Approche agentique (Mistral + Llama)
+python3 experiments/run_agentic.py
+
+# Comparaison sur un dataset specifique
+python3 experiments/compare_results.py --dataset t1
+
+# Seulement Mistral, Workflow 1
+python3 experiments/run_agentic.py --llm mistral --workflow 1
+\end{lstlisting}
+
+\section{Annexe : Structure du code}
+
+\begin{lstlisting}[language={},caption={Arborescence du projet},basicstyle=\ttfamily\scriptsize]
+PFD-Discovery/
+|-- data/
+|   |-- CHE/               (5 datasets chimie/biologie)
+|   |-- DGOV/              (5 datasets gouvernance)
+|   +-- pfd_validation/    (4 datasets validation)
+|-- src/
+|   |-- data_loader.py          Chargement CSV
+|   |-- pattern_extraction.py   7 transformations
+|   |-- pattern_grouping.py     Groupement par pattern
+|   |-- candidate_generation.py Candidats X -> Y
+|   |-- validation.py           Support + confidence
+|   |-- generalization.py       Fusion de patterns
+|   |-- classical_pipeline.py   Pipeline 5 etapes
+|   |-- llm_agent.py            Integration Ollama
+|   |-- agentic_workflow.py     Workflow 1 + 2
+|   +-- evaluation.py           Metriques
+|-- experiments/
+|   |-- run_classical.py        Script classique
+|   |-- run_agentic.py          Script agentique
+|   +-- compare_results.py      Comparaison
+|-- results/                    Resultats JSON
++-- requirements.txt
+\end{lstlisting}
+
+\end{document}
