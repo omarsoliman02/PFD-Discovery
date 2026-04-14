@@ -175,7 +175,7 @@ PFD-Discovery/
 |   |-- validation.py                 # Calcul support/confidence + filtrage
 |   |-- generalization.py             # Fusion de patterns redondants
 |   |-- classical_pipeline.py         # Pipeline classique complet (5 etapes)
-|   |-- llm_agent.py                  # Integration Gemini (Google) + Cohere
+|   |-- llm_agent.py                  # Integration LLMs (Mistral, Llama, Gemini, Cohere)
 |   |-- agentic_workflow.py           # Workflow 1 (Feature-Enriched) + Workflow 2 (Guided Search)
 |   +-- evaluation.py                 # Metriques d'evaluation et comparaison
 |
@@ -197,24 +197,37 @@ PFD-Discovery/
 ### Prerequis
 
 - **Python 3.10+**
-- Cles API pour la partie agentique :
-  - [Google AI (Gemini)](https://aistudio.google.com/apikey) -- cle API
-  - [Cohere](https://dashboard.cohere.com/api-keys) -- cle API
+- **Ollama** (recommande, pour les modeles locaux -- zero quota, gratuit)
 
 ### Etapes
 
 ```bash
 # 1. Cloner le repository
-git clone https://github.com/<votre-username>/PFD-Discovery.git
+git clone https://github.com/omarsoliman02/PFD-Discovery.git
 cd PFD-Discovery
 
-# 2. Installer les dependances
+# 2. Installer les dependances Python
 pip install -r requirements.txt
 
-# 3. Configurer les cles API (pour la partie agentique uniquement)
+# 3. Installer Ollama (modeles locaux -- RECOMMANDE)
+brew install ollama
+brew services start ollama
+ollama pull mistral        # Mistral 7B (~4.4 Go)
+ollama pull llama3.1       # Llama 3.1 8B (~4.9 Go)
+
+# 4. (Optionnel) Configurer les APIs cloud
 export GOOGLE_API_KEY="votre-cle-google"
 export COHERE_API_KEY="votre-cle-cohere"
 ```
+
+### LLMs disponibles
+
+| Modele | Type | Quota | RAM requise | Commande |
+|--------|------|-------|-------------|----------|
+| **Mistral 7B** | Local (Ollama) | Illimite | ~6 Go | `--llm mistral` |
+| **Llama 3.1 8B** | Local (Ollama) | Illimite | ~7 Go | `--llm llama` |
+| Gemini 2.0 Flash | Cloud (API) | Limite | -- | `--llm gemini` |
+| Cohere Command A | Cloud (API) | Limite | -- | `--llm cohere` |
 
 ---
 
@@ -259,24 +272,27 @@ Temps d'execution: 6.70s
 
 ### 2. Approche agentique
 
-**Necessite les cles API** Claude et/ou Gemini configurees.
+Par defaut, utilise les **modeles locaux** (Ollama) -- aucune cle API requise.
 
 ```bash
-# Tous les datasets, tous les LLMs, tous les workflows
+# Modeles locaux (Mistral + Llama) sur tous les datasets
 python3 experiments/run_agentic.py
 
-# Seulement Claude sur le dataset t1
-python3 experiments/run_agentic.py --llm claude --dataset t1
+# Seulement Mistral sur le dataset t1
+python3 experiments/run_agentic.py --llm mistral --dataset t1
 
-# Seulement Workflow 1 avec Gemini
-python3 experiments/run_agentic.py --llm gemini --workflow 1
+# Seulement Workflow 1 avec Llama
+python3 experiments/run_agentic.py --llm llama --workflow 1
+
+# Modeles cloud (necessite cles API)
+python3 experiments/run_agentic.py --llm gemini --dataset t1
 ```
 
 **Options** :
 
 | Option | Valeurs | Description |
 |--------|---------|-------------|
-| `--llm` | `claude`, `gemini`, `all` | LLM a utiliser |
+| `--llm` | `mistral`, `llama`, `gemini`, `cohere`, `local`, `all` | LLM a utiliser |
 | `--dataset` | nom du fichier (ex: `t1`) | Filtrer par dataset |
 | `--workflow` | `1` ou `2` | Numero du workflow |
 
@@ -285,23 +301,23 @@ python3 experiments/run_agentic.py --llm gemini --workflow 1
 Le script `compare_results.py` execute **les 3 approches** (classique + W1 + W2) sur un meme dataset et affiche un tableau comparatif.
 
 ```bash
-# Comparaison complete sur t1.csv
+# Comparaison avec modeles locaux (par defaut)
 python3 experiments/compare_results.py --dataset t1
 
 # Comparaison avec un seul LLM
-python3 experiments/compare_results.py --dataset t2 --llm claude
+python3 experiments/compare_results.py --dataset t2 --llm mistral
 ```
 
-**Exemple de tableau comparatif** :
+**Resultats reels (t1.csv -- 9101 employes gouvernementaux)** :
 ```
 ------------------------------------------------------------------------------------------------------------------------
 Approche                              PFDs  Parfaites  Interes.   Conf.moy  Supp.moy  Candidats  Temps(s)
 ------------------------------------------------------------------------------------------------------------------------
-Classique                               85         3        64     0.9133     5234.2        472      6.70
-W1-gemini                               14         2        11     0.9580     4300.5         42      3.50
-W2-gemini                               10         2         8     0.9720     4890.1         18      2.40
-W1-cohere                               12         2        10     0.9650     4521.0         38      3.20
-W2-cohere                                8         2         7     0.9812     5102.3         15      2.10
+Classique                               85         2        64     0.9133     7481.9       616     10.42
+W1-mistral                              23         2         4     0.9310     6747.4        72     70.75
+W2-mistral                              10         0         1     0.9386     5736.9        34     51.76
+W1-llama                                12         0        12     0.9150     7804.3        40     62.52
+W2-llama                                21         2         0     0.9335     7144.9        74     99.51
 ------------------------------------------------------------------------------------------------------------------------
 ```
 
@@ -365,8 +381,10 @@ Pour chaque candidat `pattern(X) -> Y` :
 
 ### `llm_agent.py` -- Integration LLM
 
-- **Gemini** (Google) : via `google-genai` SDK, modele `gemini-2.0-flash`
-- **Cohere** : via `cohere` SDK, modele `command-r-plus`
+- **Mistral 7B** (local) : via Ollama REST API, sans quota
+- **Llama 3.1 8B** (local) : via Ollama REST API, sans quota
+- **Gemini** (cloud) : via `google-genai` SDK, modele `gemini-2.0-flash`
+- **Cohere** (cloud) : via `cohere` SDK, modele `command-a-03-2025`
 
 Deux types de prompts :
 1. **Suggestion de transformations** : le LLM analyse le schema et suggere les transformations pertinentes
@@ -407,8 +425,9 @@ Deux types de prompts :
 |-------------|-------|
 | **Python 3.10+** | Langage principal |
 | **pandas** | Manipulation de donnees CSV |
-| **Google GenAI SDK** | Integration Gemini API |
-| **Cohere SDK** | Integration Cohere Command R+ API |
+| **Ollama** | LLMs locaux (Mistral 7B, Llama 3.1 8B) -- sans quota |
+| **Google GenAI SDK** | Integration Gemini API (cloud) |
+| **Cohere SDK** | Integration Cohere Command A API (cloud) |
 
 ---
 

@@ -1,15 +1,16 @@
 """Script pour executer les workflows agentiques sur tous les datasets.
 
 Usage:
-  python run_agentic.py                    # Tous les datasets, tous les LLMs
-  python run_agentic.py --llm gemini       # Seulement Gemini
-  python run_agentic.py --llm cohere       # Seulement Cohere
-  python run_agentic.py --dataset t1       # Seulement le dataset t1
-  python run_agentic.py --workflow 1       # Seulement Workflow 1
+  python run_agentic.py                        # Tous les datasets, modeles locaux
+  python run_agentic.py --llm mistral          # Seulement Mistral (local)
+  python run_agentic.py --llm llama            # Seulement Llama (local)
+  python run_agentic.py --llm gemini           # Seulement Gemini (API)
+  python run_agentic.py --llm cohere           # Seulement Cohere (API)
+  python run_agentic.py --dataset t1           # Seulement le dataset t1
+  python run_agentic.py --workflow 1           # Seulement Workflow 1
 
-Prerequis:
-  export GOOGLE_API_KEY="AI..."
-  export COHERE_API_KEY="..."
+Modeles locaux (Ollama, sans quota) : mistral, llama
+Modeles cloud (API, avec quota) : gemini, cohere
 """
 
 import sys
@@ -27,12 +28,17 @@ MIN_CONFIDENCE = 0.85
 
 def main():
     parser = argparse.ArgumentParser(description="Executer les workflows agentiques")
-    parser.add_argument("--llm", choices=["gemini", "cohere", "all"], default="all")
+    parser.add_argument("--llm", choices=["mistral", "llama", "gemini", "cohere", "local", "all"], default="local")
     parser.add_argument("--dataset", type=str, default=None, help="Nom du dataset (ex: t1, US_Phone_Code)")
     parser.add_argument("--workflow", type=int, choices=[1, 2], default=None, help="Numero du workflow")
     args = parser.parse_args()
 
-    llms = ["gemini", "cohere"] if args.llm == "all" else [args.llm]
+    if args.llm == "local":
+        llms = ["mistral", "llama"]
+    elif args.llm == "all":
+        llms = ["mistral", "llama", "gemini", "cohere"]
+    else:
+        llms = [args.llm]
     workflows = [1, 2] if args.workflow is None else [args.workflow]
 
     data_dir = os.path.join(os.path.dirname(__file__), "..", "data")

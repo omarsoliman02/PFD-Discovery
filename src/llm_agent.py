@@ -1,8 +1,12 @@
 """Module d'integration LLM pour la decouverte agentique de PFDs.
 
-Supporte deux LLMs :
-  - Gemini (Google)
-  - Cohere (Command R+)
+Supporte 4 LLMs :
+  - Mistral 7B (local via Ollama) -- RECOMMANDE
+  - Llama 3.1 8B (local via Ollama) -- RECOMMANDE
+  - Gemini (Google API)
+  - Cohere (API)
+
+Les modeles locaux (Ollama) n'ont aucune limite de quota.
 
 Chaque agent peut :
   1. Suggerer des transformations pertinentes (Workflow 1)
@@ -91,6 +95,55 @@ def format_schema_for_prompt(schema_info: dict) -> str:
     return "\n".join(lines)
 
 
+# ============================================================
+# LLMs LOCAUX (Ollama) -- SANS LIMITE DE QUOTA
+# ============================================================
+
+def call_ollama(prompt: str, model: str = "mistral", base_url: str = "http://localhost:11434") -> str:
+    """Appelle un modele local via Ollama REST API.
+
+    Args:
+        prompt: Le prompt a envoyer
+        model: Nom du modele Ollama (ex: "mistral", "llama3.1")
+        base_url: URL du serveur Ollama
+    """
+    import urllib.request
+
+    payload = json.dumps({
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "options": {
+            "temperature": 0.1,
+            "num_predict": 4096,
+        }
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        f"{base_url}/api/generate",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+    )
+
+    with urllib.request.urlopen(req, timeout=300) as resp:
+        result = json.loads(resp.read().decode("utf-8"))
+        return result.get("response", "")
+
+
+def call_mistral(prompt: str, api_key: str | None = None) -> str:
+    """Appelle Mistral 7B via Ollama (local, sans quota)."""
+    return call_ollama(prompt, model="mistral")
+
+
+def call_llama(prompt: str, api_key: str | None = None) -> str:
+    """Appelle Llama 3.1 8B via Ollama (local, sans quota)."""
+    return call_ollama(prompt, model="llama3.1")
+
+
+# ============================================================
+# LLMs CLOUD (API avec quotas)
+# ============================================================
+
 def call_gemini(prompt: str, api_key: str | None = None) -> str:
     """Appelle l'API Gemini avec retry automatique en cas de rate limiting."""
     import time
@@ -135,14 +188,29 @@ def call_cohere(prompt: str, api_key: str | None = None) -> str:
     return response.message.content[0].text
 
 
-def call_llm(prompt: str, llm_name: str = "gemini", api_key: str | None = None) -> str:
-    """Appelle un LLM par son nom."""
-    if llm_name == "gemini":
-        return call_gemini(prompt, api_key)
-    elif llm_name == "cohere":
-        return call_cohere(prompt, api_key)
-    else:
-        raise ValueError(f"LLM inconnu: {llm_name}. Disponibles: gemini, cohere")
+# ============================================================
+# DISPATCHER
+# ============================================================
+
+LLM_REGISTRY = {
+    "mistral": call_mistral,
+    "llama": call_llama,
+    "gemini": call_gemini,
+    "cohere": call_cohere,
+}
+
+
+def call_llm(prompt: str, llm_name: str = "mistral", api_key: str | None = None) -> str:
+    """Appelle un LLM par son nom.
+
+    Modeles locaux (Ollama, sans quota) : "mistral", "llama"
+    Modeles cloud (API, avec quota)     : "gemini", "cohere"
+    """
+    if llm_name not in LLM_REGISTRY:
+        available = ", ".join(LLM_REGISTRY.keys())
+        raise ValueError(f"LLM inconnu: {llm_name}. Disponibles: {available}")
+
+    return LLM_REGISTRY[llm_name](prompt, api_key)
 
 
 def parse_json_response(response: str) -> dict:
@@ -163,7 +231,7 @@ def parse_json_response(response: str) -> dict:
 
 def suggest_transformations(
     schema_info: dict,
-    llm_name: str = "gemini",
+    llm_name: str = "mistral",
     api_key: str | None = None,
 ) -> list[dict]:
     """Demande au LLM de suggerer des transformations pertinentes.
@@ -183,7 +251,7 @@ def suggest_transformations(
 def prioritize_candidates(
     schema_info: dict,
     transformations_str: list[str],
-    llm_name: str = "gemini",
+    llm_name: str = "mistral",
     api_key: str | None = None,
 ) -> list[dict]:
     """Demande au LLM de prioriser les candidats X -> Y.
