@@ -175,7 +175,7 @@ PFD-Discovery/
 |   |-- validation.py                 # Calcul support/confidence + filtrage
 |   |-- generalization.py             # Fusion de patterns redondants
 |   |-- classical_pipeline.py         # Pipeline classique complet (5 etapes)
-|   |-- llm_agent.py                  # Integration Claude (Anthropic) + Gemini (Google)
+|   |-- llm_agent.py                  # Integration Gemini (Google) + Cohere
 |   |-- agentic_workflow.py           # Workflow 1 (Feature-Enriched) + Workflow 2 (Guided Search)
 |   +-- evaluation.py                 # Metriques d'evaluation et comparaison
 |
@@ -198,8 +198,8 @@ PFD-Discovery/
 
 - **Python 3.10+**
 - Cles API pour la partie agentique :
-  - [Anthropic (Claude)](https://console.anthropic.com/) -- cle API
   - [Google AI (Gemini)](https://aistudio.google.com/apikey) -- cle API
+  - [Cohere](https://dashboard.cohere.com/api-keys) -- cle API
 
 ### Etapes
 
@@ -212,8 +212,8 @@ cd PFD-Discovery
 pip install -r requirements.txt
 
 # 3. Configurer les cles API (pour la partie agentique uniquement)
-export ANTHROPIC_API_KEY="votre-cle-anthropic"
 export GOOGLE_API_KEY="votre-cle-google"
+export COHERE_API_KEY="votre-cle-cohere"
 ```
 
 ---
@@ -298,10 +298,10 @@ python3 experiments/compare_results.py --dataset t2 --llm claude
 Approche                              PFDs  Parfaites  Interes.   Conf.moy  Supp.moy  Candidats  Temps(s)
 ------------------------------------------------------------------------------------------------------------------------
 Classique                               85         3        64     0.9133     5234.2        472      6.70
-W1-claude                               12         2        10     0.9650     4521.0         38      3.20
-W2-claude                                8         2         7     0.9812     5102.3         15      2.10
 W1-gemini                               14         2        11     0.9580     4300.5         42      3.50
 W2-gemini                               10         2         8     0.9720     4890.1         18      2.40
+W1-cohere                               12         2        10     0.9650     4521.0         38      3.20
+W2-cohere                                8         2         7     0.9812     5102.3         15      2.10
 ------------------------------------------------------------------------------------------------------------------------
 ```
 
@@ -365,8 +365,8 @@ Pour chaque candidat `pattern(X) -> Y` :
 
 ### `llm_agent.py` -- Integration LLM
 
-- **Claude** (Anthropic) : via `anthropic` SDK, modele `claude-sonnet-4-20250514`
 - **Gemini** (Google) : via `google-genai` SDK, modele `gemini-2.0-flash`
+- **Cohere** : via `cohere` SDK, modele `command-r-plus`
 
 Deux types de prompts :
 1. **Suggestion de transformations** : le LLM analyse le schema et suggere les transformations pertinentes
@@ -407,8 +407,8 @@ Deux types de prompts :
 |-------------|-------|
 | **Python 3.10+** | Langage principal |
 | **pandas** | Manipulation de donnees CSV |
-| **Anthropic SDK** | Integration Claude API |
 | **Google GenAI SDK** | Integration Gemini API |
+| **Cohere SDK** | Integration Cohere Command R+ API |
 
 ---
 

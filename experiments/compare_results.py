@@ -2,11 +2,11 @@
 
 Usage:
   python compare_results.py --dataset t1
-  python compare_results.py --dataset t2 --llm claude
+  python compare_results.py --dataset t2 --llm gemini
 
 Prerequis:
-  export ANTHROPIC_API_KEY="sk-..."
   export GOOGLE_API_KEY="AI..."
+  export COHERE_API_KEY="..."
 """
 
 import sys
@@ -36,7 +36,7 @@ def find_dataset(data_dir: str, name: str) -> str | None:
 def main():
     parser = argparse.ArgumentParser(description="Comparer classique vs agentique")
     parser.add_argument("--dataset", required=True, help="Nom du dataset (ex: t1)")
-    parser.add_argument("--llm", choices=["claude", "gemini", "all"], default="all")
+    parser.add_argument("--llm", choices=["gemini", "cohere", "all"], default="all")
     args = parser.parse_args()
 
     data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -63,7 +63,7 @@ def main():
     all_results.append(("Classique", classical))
 
     # 2. Workflows agentiques
-    llms = ["claude", "gemini"] if args.llm == "all" else [args.llm]
+    llms = ["gemini", "cohere"] if args.llm == "all" else [args.llm]
 
     for llm in llms:
         # Workflow 1

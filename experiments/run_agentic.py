@@ -2,14 +2,14 @@
 
 Usage:
   python run_agentic.py                    # Tous les datasets, tous les LLMs
-  python run_agentic.py --llm claude       # Seulement Claude
   python run_agentic.py --llm gemini       # Seulement Gemini
+  python run_agentic.py --llm cohere       # Seulement Cohere
   python run_agentic.py --dataset t1       # Seulement le dataset t1
   python run_agentic.py --workflow 1       # Seulement Workflow 1
 
 Prerequis:
-  export ANTHROPIC_API_KEY="sk-..."
   export GOOGLE_API_KEY="AI..."
+  export COHERE_API_KEY="..."
 """
 
 import sys
@@ -27,12 +27,12 @@ MIN_CONFIDENCE = 0.85
 
 def main():
     parser = argparse.ArgumentParser(description="Executer les workflows agentiques")
-    parser.add_argument("--llm", choices=["claude", "gemini", "all"], default="all")
+    parser.add_argument("--llm", choices=["gemini", "cohere", "all"], default="all")
     parser.add_argument("--dataset", type=str, default=None, help="Nom du dataset (ex: t1, US_Phone_Code)")
     parser.add_argument("--workflow", type=int, choices=[1, 2], default=None, help="Numero du workflow")
     args = parser.parse_args()
 
-    llms = ["claude", "gemini"] if args.llm == "all" else [args.llm]
+    llms = ["gemini", "cohere"] if args.llm == "all" else [args.llm]
     workflows = [1, 2] if args.workflow is None else [args.workflow]
 
     data_dir = os.path.join(os.path.dirname(__file__), "..", "data")

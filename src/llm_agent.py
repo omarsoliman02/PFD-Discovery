@@ -1,8 +1,8 @@
 """Module d'integration LLM pour la decouverte agentique de PFDs.
 
 Supporte deux LLMs :
-  - Claude (Anthropic)
   - Gemini (Google)
+  - Cohere (Command R+)
 
 Chaque agent peut :
   1. Suggerer des transformations pertinentes (Workflow 1)
@@ -91,25 +91,9 @@ def format_schema_for_prompt(schema_info: dict) -> str:
     return "\n".join(lines)
 
 
-def call_claude(prompt: str, api_key: str | None = None) -> str:
-    """Appelle l'API Claude et retourne la reponse."""
-    import anthropic
-
-    api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY non definie")
-
-    client = anthropic.Anthropic(api_key=api_key)
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=4096,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return message.content[0].text
-
-
 def call_gemini(prompt: str, api_key: str | None = None) -> str:
-    """Appelle l'API Gemini et retourne la reponse."""
+    """Appelle l'API Gemini avec retry automatique en cas de rate limiting."""
+    import time
     from google import genai
 
     api_key = api_key or os.environ.get("GOOGLE_API_KEY")
@@ -117,21 +101,48 @@ def call_gemini(prompt: str, api_key: str | None = None) -> str:
         raise ValueError("GOOGLE_API_KEY non definie")
 
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=prompt,
+
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+            )
+            return response.text
+        except Exception as e:
+            if "429" in str(e) and attempt < max_retries - 1:
+                wait_time = 15 * (attempt + 1)
+                print(f"    [Gemini] Rate limit atteint, attente {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                raise
+
+
+def call_cohere(prompt: str, api_key: str | None = None) -> str:
+    """Appelle l'API Cohere et retourne la reponse."""
+    import cohere
+
+    api_key = api_key or os.environ.get("COHERE_API_KEY")
+    if not api_key:
+        raise ValueError("COHERE_API_KEY non definie")
+
+    client = cohere.ClientV2(api_key=api_key)
+    response = client.chat(
+        model="command-a-03-2025",
+        messages=[{"role": "user", "content": prompt}],
     )
-    return response.text
+    return response.message.content[0].text
 
 
-def call_llm(prompt: str, llm_name: str = "claude", api_key: str | None = None) -> str:
+def call_llm(prompt: str, llm_name: str = "gemini", api_key: str | None = None) -> str:
     """Appelle un LLM par son nom."""
-    if llm_name == "claude":
-        return call_claude(prompt, api_key)
-    elif llm_name == "gemini":
+    if llm_name == "gemini":
         return call_gemini(prompt, api_key)
+    elif llm_name == "cohere":
+        return call_cohere(prompt, api_key)
     else:
-        raise ValueError(f"LLM inconnu: {llm_name}")
+        raise ValueError(f"LLM inconnu: {llm_name}. Disponibles: gemini, cohere")
 
 
 def parse_json_response(response: str) -> dict:
@@ -152,7 +163,7 @@ def parse_json_response(response: str) -> dict:
 
 def suggest_transformations(
     schema_info: dict,
-    llm_name: str = "claude",
+    llm_name: str = "gemini",
     api_key: str | None = None,
 ) -> list[dict]:
     """Demande au LLM de suggerer des transformations pertinentes.
@@ -172,7 +183,7 @@ def suggest_transformations(
 def prioritize_candidates(
     schema_info: dict,
     transformations_str: list[str],
-    llm_name: str = "claude",
+    llm_name: str = "gemini",
     api_key: str | None = None,
 ) -> list[dict]:
     """Demande au LLM de prioriser les candidats X -> Y.
