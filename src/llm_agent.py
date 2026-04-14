@@ -1,21 +1,17 @@
 """Module d'integration LLM pour la decouverte agentique de PFDs.
 
-Supporte 4 LLMs :
-  - Mistral 7B (local via Ollama) -- RECOMMANDE
-  - Llama 3.1 8B (local via Ollama) -- RECOMMANDE
-  - Gemini (Google API)
-  - Cohere (API)
-
-Les modeles locaux (Ollama) n'ont aucune limite de quota.
+Utilise des modeles locaux via Ollama (zero quota, gratuit, offline) :
+  - Mistral 7B
+  - Llama 3.1 8B
 
 Chaque agent peut :
   1. Suggerer des transformations pertinentes (Workflow 1)
   2. Prioriser des candidats X -> Y (Workflow 2)
 """
 
-import os
 import json
 import re
+import urllib.request
 
 
 TRANSFORMATION_SUGGESTION_PROMPT = """Tu es un expert en qualite de donnees et decouverte de dependances fonctionnelles.
@@ -96,10 +92,13 @@ def format_schema_for_prompt(schema_info: dict) -> str:
 
 
 # ============================================================
-# LLMs LOCAUX (Ollama) -- SANS LIMITE DE QUOTA
+# OLLAMA -- Modeles locaux (sans limite)
 # ============================================================
 
-def call_ollama(prompt: str, model: str = "mistral", base_url: str = "http://localhost:11434") -> str:
+OLLAMA_BASE_URL = "http://localhost:11434"
+
+
+def call_ollama(prompt: str, model: str, base_url: str = OLLAMA_BASE_URL) -> str:
     """Appelle un modele local via Ollama REST API.
 
     Args:
@@ -107,8 +106,6 @@ def call_ollama(prompt: str, model: str = "mistral", base_url: str = "http://loc
         model: Nom du modele Ollama (ex: "mistral", "llama3.1")
         base_url: URL du serveur Ollama
     """
-    import urllib.request
-
     payload = json.dumps({
         "model": model,
         "prompt": prompt,
@@ -141,70 +138,19 @@ def call_llama(prompt: str, api_key: str | None = None) -> str:
 
 
 # ============================================================
-# LLMs CLOUD (API avec quotas)
-# ============================================================
-
-def call_gemini(prompt: str, api_key: str | None = None) -> str:
-    """Appelle l'API Gemini avec retry automatique en cas de rate limiting."""
-    import time
-    from google import genai
-
-    api_key = api_key or os.environ.get("GOOGLE_API_KEY")
-    if not api_key:
-        raise ValueError("GOOGLE_API_KEY non definie")
-
-    client = genai.Client(api_key=api_key)
-
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=prompt,
-            )
-            return response.text
-        except Exception as e:
-            if "429" in str(e) and attempt < max_retries - 1:
-                wait_time = 15 * (attempt + 1)
-                print(f"    [Gemini] Rate limit atteint, attente {wait_time}s...")
-                time.sleep(wait_time)
-            else:
-                raise
-
-
-def call_cohere(prompt: str, api_key: str | None = None) -> str:
-    """Appelle l'API Cohere et retourne la reponse."""
-    import cohere
-
-    api_key = api_key or os.environ.get("COHERE_API_KEY")
-    if not api_key:
-        raise ValueError("COHERE_API_KEY non definie")
-
-    client = cohere.ClientV2(api_key=api_key)
-    response = client.chat(
-        model="command-a-03-2025",
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return response.message.content[0].text
-
-
-# ============================================================
 # DISPATCHER
 # ============================================================
 
 LLM_REGISTRY = {
     "mistral": call_mistral,
     "llama": call_llama,
-    "gemini": call_gemini,
-    "cohere": call_cohere,
 }
 
 
 def call_llm(prompt: str, llm_name: str = "mistral", api_key: str | None = None) -> str:
     """Appelle un LLM par son nom.
 
-    Modeles locaux (Ollama, sans quota) : "mistral", "llama"
-    Modeles cloud (API, avec quota)     : "gemini", "cohere"
+    Modeles disponibles (locaux via Ollama) : "mistral", "llama"
     """
     if llm_name not in LLM_REGISTRY:
         available = ", ".join(LLM_REGISTRY.keys())
@@ -215,14 +161,12 @@ def call_llm(prompt: str, llm_name: str = "mistral", api_key: str | None = None)
 
 def parse_json_response(response: str) -> dict:
     """Extrait et parse le JSON d'une reponse LLM."""
-    # Chercher un bloc JSON dans la reponse
     json_match = re.search(r'\{[\s\S]*\}', response)
     if json_match:
         try:
             return json.loads(json_match.group())
         except json.JSONDecodeError:
             pass
-    # Essayer la reponse entiere
     try:
         return json.loads(response)
     except json.JSONDecodeError:

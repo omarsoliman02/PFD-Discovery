@@ -32,7 +32,7 @@
 Ce projet etudie la **decouverte de dependances fonctionnelles basees sur des patterns (PFDs)** dans des donnees reelles. Il compare deux approches :
 
 1. **Approche classique (algorithmique)** : exploration systematique de toutes les transformations et candidats possibles
-2. **Approche agentique (IA)** : utilisation de LLMs (Claude, Gemini) pour guider intelligemment la recherche
+2. **Approche agentique (IA)** : utilisation de LLMs locaux (Mistral, Llama via Ollama) pour guider intelligemment la recherche
 
 L'objectif est d'evaluer si l'IA agentique ameliore la **qualite**, l'**interpretabilite** et l'**efficacite** de la decouverte de PFDs par rapport a l'approche purement algorithmique.
 
@@ -175,7 +175,7 @@ PFD-Discovery/
 |   |-- validation.py                 # Calcul support/confidence + filtrage
 |   |-- generalization.py             # Fusion de patterns redondants
 |   |-- classical_pipeline.py         # Pipeline classique complet (5 etapes)
-|   |-- llm_agent.py                  # Integration LLMs (Mistral, Llama, Gemini, Cohere)
+|   |-- llm_agent.py                  # Integration LLMs locaux (Mistral, Llama via Ollama)
 |   |-- agentic_workflow.py           # Workflow 1 (Feature-Enriched) + Workflow 2 (Guided Search)
 |   +-- evaluation.py                 # Metriques d'evaluation et comparaison
 |
@@ -197,7 +197,7 @@ PFD-Discovery/
 ### Prerequis
 
 - **Python 3.10+**
-- **Ollama** (recommande, pour les modeles locaux -- zero quota, gratuit)
+- **Ollama** (pour les modeles locaux -- zero quota, gratuit, offline)
 
 ### Etapes
 
@@ -209,15 +209,11 @@ cd PFD-Discovery
 # 2. Installer les dependances Python
 pip install -r requirements.txt
 
-# 3. Installer Ollama (modeles locaux -- RECOMMANDE)
+# 3. Installer Ollama (modeles locaux)
 brew install ollama
 brew services start ollama
 ollama pull mistral        # Mistral 7B (~4.4 Go)
 ollama pull llama3.1       # Llama 3.1 8B (~4.9 Go)
-
-# 4. (Optionnel) Configurer les APIs cloud
-export GOOGLE_API_KEY="votre-cle-google"
-export COHERE_API_KEY="votre-cle-cohere"
 ```
 
 ### LLMs disponibles
@@ -226,8 +222,6 @@ export COHERE_API_KEY="votre-cle-cohere"
 |--------|------|-------|-------------|----------|
 | **Mistral 7B** | Local (Ollama) | Illimite | ~6 Go | `--llm mistral` |
 | **Llama 3.1 8B** | Local (Ollama) | Illimite | ~7 Go | `--llm llama` |
-| Gemini 2.0 Flash | Cloud (API) | Limite | -- | `--llm gemini` |
-| Cohere Command A | Cloud (API) | Limite | -- | `--llm cohere` |
 
 ---
 
@@ -272,10 +266,10 @@ Temps d'execution: 6.70s
 
 ### 2. Approche agentique
 
-Par defaut, utilise les **modeles locaux** (Ollama) -- aucune cle API requise.
+Utilise les **modeles locaux** via Ollama -- aucune cle API requise, zero quota.
 
 ```bash
-# Modeles locaux (Mistral + Llama) sur tous les datasets
+# Mistral + Llama sur tous les datasets
 python3 experiments/run_agentic.py
 
 # Seulement Mistral sur le dataset t1
@@ -283,16 +277,13 @@ python3 experiments/run_agentic.py --llm mistral --dataset t1
 
 # Seulement Workflow 1 avec Llama
 python3 experiments/run_agentic.py --llm llama --workflow 1
-
-# Modeles cloud (necessite cles API)
-python3 experiments/run_agentic.py --llm gemini --dataset t1
 ```
 
 **Options** :
 
 | Option | Valeurs | Description |
 |--------|---------|-------------|
-| `--llm` | `mistral`, `llama`, `gemini`, `cohere`, `local`, `all` | LLM a utiliser |
+| `--llm` | `mistral`, `llama`, `all` | LLM a utiliser |
 | `--dataset` | nom du fichier (ex: `t1`) | Filtrer par dataset |
 | `--workflow` | `1` ou `2` | Numero du workflow |
 
@@ -381,10 +372,8 @@ Pour chaque candidat `pattern(X) -> Y` :
 
 ### `llm_agent.py` -- Integration LLM
 
-- **Mistral 7B** (local) : via Ollama REST API, sans quota
-- **Llama 3.1 8B** (local) : via Ollama REST API, sans quota
-- **Gemini** (cloud) : via `google-genai` SDK, modele `gemini-2.0-flash`
-- **Cohere** (cloud) : via `cohere` SDK, modele `command-a-03-2025`
+- **Mistral 7B** (local) : via Ollama REST API, sans quota, offline
+- **Llama 3.1 8B** (local) : via Ollama REST API, sans quota, offline
 
 Deux types de prompts :
 1. **Suggestion de transformations** : le LLM analyse le schema et suggere les transformations pertinentes
@@ -425,9 +414,7 @@ Deux types de prompts :
 |-------------|-------|
 | **Python 3.10+** | Langage principal |
 | **pandas** | Manipulation de donnees CSV |
-| **Ollama** | LLMs locaux (Mistral 7B, Llama 3.1 8B) -- sans quota |
-| **Google GenAI SDK** | Integration Gemini API (cloud) |
-| **Cohere SDK** | Integration Cohere Command A API (cloud) |
+| **Ollama** | Serveur de LLMs locaux (Mistral 7B, Llama 3.1 8B) -- sans quota, offline |
 
 ---
 

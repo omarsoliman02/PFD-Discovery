@@ -1,16 +1,13 @@
 """Script pour executer les workflows agentiques sur tous les datasets.
 
 Usage:
-  python run_agentic.py                        # Tous les datasets, modeles locaux
-  python run_agentic.py --llm mistral          # Seulement Mistral (local)
-  python run_agentic.py --llm llama            # Seulement Llama (local)
-  python run_agentic.py --llm gemini           # Seulement Gemini (API)
-  python run_agentic.py --llm cohere           # Seulement Cohere (API)
+  python run_agentic.py                        # Tous les datasets, Mistral + Llama
+  python run_agentic.py --llm mistral          # Seulement Mistral
+  python run_agentic.py --llm llama            # Seulement Llama
   python run_agentic.py --dataset t1           # Seulement le dataset t1
   python run_agentic.py --workflow 1           # Seulement Workflow 1
 
-Modeles locaux (Ollama, sans quota) : mistral, llama
-Modeles cloud (API, avec quota) : gemini, cohere
+Prerequis: Ollama doit etre lance (brew services start ollama)
 """
 
 import sys
@@ -28,17 +25,12 @@ MIN_CONFIDENCE = 0.85
 
 def main():
     parser = argparse.ArgumentParser(description="Executer les workflows agentiques")
-    parser.add_argument("--llm", choices=["mistral", "llama", "gemini", "cohere", "local", "all"], default="local")
+    parser.add_argument("--llm", choices=["mistral", "llama", "all"], default="all")
     parser.add_argument("--dataset", type=str, default=None, help="Nom du dataset (ex: t1, US_Phone_Code)")
     parser.add_argument("--workflow", type=int, choices=[1, 2], default=None, help="Numero du workflow")
     args = parser.parse_args()
 
-    if args.llm == "local":
-        llms = ["mistral", "llama"]
-    elif args.llm == "all":
-        llms = ["mistral", "llama", "gemini", "cohere"]
-    else:
-        llms = [args.llm]
+    llms = ["mistral", "llama"] if args.llm == "all" else [args.llm]
     workflows = [1, 2] if args.workflow is None else [args.workflow]
 
     data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -50,7 +42,6 @@ def main():
         for filepath in files:
             dataset_name = os.path.basename(filepath).replace(".csv", "")
 
-            # Filtre par dataset si specifie
             if args.dataset and args.dataset not in dataset_name:
                 continue
 
@@ -93,7 +84,6 @@ def main():
                         print(f"ERREUR: {e}")
                         continue
 
-    # Comparaison globale
     if all_approach_results:
         print(f"\n\n{'='*80}")
         print("COMPARAISON GLOBALE")

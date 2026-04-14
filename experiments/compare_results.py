@@ -1,12 +1,10 @@
 """Script de comparaison entre approche classique et agentique sur un dataset.
 
 Usage:
-  python compare_results.py --dataset t1                  # Modeles locaux (Mistral + Llama)
+  python compare_results.py --dataset t1                  # Mistral + Llama
   python compare_results.py --dataset t2 --llm mistral    # Seulement Mistral
-  python compare_results.py --dataset t2 --llm gemini     # Seulement Gemini (API)
 
-Modeles locaux (Ollama, sans quota) : mistral, llama
-Modeles cloud (API, avec quota) : gemini, cohere
+Prerequis: Ollama doit etre lance (brew services start ollama)
 """
 
 import sys
@@ -36,7 +34,7 @@ def find_dataset(data_dir: str, name: str) -> str | None:
 def main():
     parser = argparse.ArgumentParser(description="Comparer classique vs agentique")
     parser.add_argument("--dataset", required=True, help="Nom du dataset (ex: t1)")
-    parser.add_argument("--llm", choices=["mistral", "llama", "gemini", "cohere", "local", "all"], default="local")
+    parser.add_argument("--llm", choices=["mistral", "llama", "all"], default="all")
     args = parser.parse_args()
 
     data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -63,12 +61,7 @@ def main():
     all_results.append(("Classique", classical))
 
     # 2. Workflows agentiques
-    if args.llm == "local":
-        llms = ["mistral", "llama"]
-    elif args.llm == "all":
-        llms = ["mistral", "llama", "gemini", "cohere"]
-    else:
-        llms = [args.llm]
+    llms = ["mistral", "llama"] if args.llm == "all" else [args.llm]
 
     for llm in llms:
         # Workflow 1
