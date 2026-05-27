@@ -2,6 +2,10 @@
 
 Fusionne les PFDs specifiques en regles plus generales.
 Exemple : "John*" -> M et "James*" -> M  =>  first_token(name) -> gender
+
+Deux strategies disponibles :
+  - generalize_pfds : algorithmique (preferre court prefix, subsomption identity)
+  - generalize_pfds_llm : semantique via LLM (regroupe par concept metier)
 """
 
 from .validation import PFDResult
@@ -85,3 +89,74 @@ def generalize_pfds(pfds: list[PFDResult]) -> list[PFDResult]:
     # Trier par confidence decroissante
     generalized.sort(key=lambda p: (p.confidence, p.support), reverse=True)
     return generalized
+
+
+def generalize_pfds_llm(
+    pfds: list[PFDResult],
+    schema_info: dict,
+    llm_name: str = "mistral",
+    api_key: str | None = None,
+    verbose: bool = False,
+) -> tuple[list[PFDResult], list[dict]]:
+    """Generalisation semantique par LLM.
+
+    Demande au LLM de regrouper les PFDs par concept metier et de choisir
+    une regle representante pour chaque groupe.
+
+    Args:
+        pfds: liste des PFDs validees
+        schema_info: schema du dataset
+        llm_name: nom du LLM a utiliser
+
+    Returns:
+        (pfds_generalisees, groupes_semantiques)
+        pfds_generalisees : liste de PFDResult choisis comme representants
+        groupes_semantiques : liste de dicts {concept, representative, members}
+    """
+    from .llm_agent import semantic_generalize
+
+    if not pfds:
+        return [], []
+
+    # Construire la liste des PFDs sous forme de strings courtes
+    pfd_strings = [
+        f"{p.x_transformation} -> {p.y_column} [support={p.support}, conf={p.confidence:.3f}]"
+        for p in pfds
+    ]
+
+    if verbose:
+        print(f"[GEN-LLM] Demande de regroupement semantique a {llm_name} pour {len(pfds)} PFDs...")
+    groups = semantic_generalize(pfd_strings, schema_info, llm_name, api_key)
+
+    # Index par signature "transformation -> y_column"
+    pfd_index: dict[str, PFDResult] = {}
+    for p in pfds:
+        sig = f"{p.x_transformation} -> {p.y_column}"
+        pfd_index[sig] = p
+
+    # Pour chaque groupe, retrouver la regle representante
+    representatives: list[PFDResult] = []
+    used_signatures: set[str] = set()
+
+    for g in groups:
+        rep_str = g.get("representative", "")
+        # Strip support/conf si presents
+        rep_sig = rep_str.split(" [")[0].strip()
+        if rep_sig in pfd_index and rep_sig not in used_signatures:
+            representatives.append(pfd_index[rep_sig])
+            used_signatures.add(rep_sig)
+            # Marquer les membres comme deja regroupes
+            for m in g.get("members", []):
+                m_sig = m.split(" [")[0].strip()
+                used_signatures.add(m_sig)
+
+    # PFDs qui n'ont ete classees dans aucun groupe -> on les garde aussi
+    for sig, p in pfd_index.items():
+        if sig not in used_signatures:
+            representatives.append(p)
+
+    representatives.sort(key=lambda p: (p.confidence, p.support), reverse=True)
+    if verbose:
+        print(f"[GEN-LLM] {len(groups)} groupes formes, {len(representatives)} regles representantes")
+
+    return representatives, groups

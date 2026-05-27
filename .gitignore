@@ -22,6 +22,16 @@ venv/
 
 # Results (regenerables)
 results/*.json
+results/*.txt
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
 
 # Secrets
 *.key

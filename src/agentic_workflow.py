@@ -20,8 +20,12 @@ from .generalization import generalize_pfds
 from .llm_agent import (
     suggest_transformations,
     prioritize_candidates,
+    propose_initial_hypotheses,
+    refine_hypotheses,
+    semantic_generalize,
     format_schema_for_prompt,
 )
+from .validation import validate_candidate
 
 
 def _parse_transformation_suggestion(suggestion: dict) -> Transformation | None:
@@ -254,6 +258,153 @@ def workflow2_guided_search(
         "agent_transformations": transf_strings,
         "prioritized_candidates": prioritized,
         "num_candidates": len(selected_candidates),
+        "num_valid": len(valid_pfds),
+        "num_generalized": len(generalized),
+        "execution_time": elapsed,
+        "llm_name": llm_name,
+    }
+
+
+def workflow3_agent_in_the_loop(
+    df: pd.DataFrame,
+    llm_name: str = "mistral",
+    api_key: str | None = None,
+    min_support: int = 5,
+    min_confidence: float = 0.85,
+    max_iterations: int = 3,
+    verbose: bool = True,
+) -> dict:
+    """Workflow 3 : Agent-in-the-Loop Discovery.
+
+    Boucle iterative :
+      1. L'agent propose des hypotheses (PFDs candidates)
+      2. L'algorithme les valide et calcule support/confidence
+      3. L'agent recoit le feedback et raffine ses hypotheses
+      4. On itere jusqu'a convergence ou max_iterations
+    """
+    start_time = time.time()
+
+    schema_info = get_schema_info(df)
+    columns_list = list(df.columns)
+    if verbose:
+        print(f"[W3] Demarrage Agent-in-the-Loop -- max_iterations={max_iterations}")
+        print(f"[W3] Schema: {len(columns_list)} colonnes, {len(df)} lignes")
+
+    accepted_pfds: dict[str, PFDResult] = {}  # cle = signature de la regle
+    iteration_log = []
+
+    def _signature(transf: Transformation, y_col: str) -> str:
+        return f"{transf} -> {y_col}"
+
+    def _validate_hypotheses(hyp_list: list[dict]) -> tuple[list, list, list]:
+        """Retourne (strong, weak, rejected) listes de dicts pour le feedback."""
+        strong, weak, rejected = [], [], []
+        for h in hyp_list:
+            x_str = h.get("x_transformation", "")
+            y_col = h.get("y_column", "")
+            parsed = _parse_candidate_string(f"{x_str} -> {y_col}", columns_list)
+            if not parsed:
+                continue
+            transf, actual_y = parsed
+            result = validate_candidate(df, transf, actual_y, min_support=1)
+
+            row = {
+                "x_transformation": str(transf),
+                "y_column": actual_y,
+                "support": result.support,
+                "confidence": result.confidence,
+                "rationale": h.get("rationale", ""),
+                "_transf": transf,
+                "_y": actual_y,
+                "_result": result,
+            }
+            if result.support < min_support:
+                rejected.append(row)
+            elif result.confidence >= min_confidence:
+                strong.append(row)
+                # Accepter la regle
+                accepted_pfds[_signature(transf, actual_y)] = result
+            else:
+                weak.append(row)
+        return strong, weak, rejected
+
+    # === Iteration 0 : hypotheses initiales ===
+    if verbose:
+        print(f"\n[W3 iter 0] Generation des hypotheses initiales par {llm_name}...")
+    hypotheses = propose_initial_hypotheses(schema_info, llm_name, api_key)
+    if verbose:
+        print(f"[W3 iter 0] {len(hypotheses)} hypotheses proposees")
+        for h in hypotheses:
+            print(f"  - {h.get('x_transformation')} -> {h.get('y_column')}")
+
+    strong, weak, rejected = _validate_hypotheses(hypotheses)
+    iteration_log.append({
+        "iteration": 0,
+        "hypotheses": hypotheses,
+        "strong": [{k: v for k, v in r.items() if not k.startswith("_")} for r in strong],
+        "weak": [{k: v for k, v in r.items() if not k.startswith("_")} for r in weak],
+        "rejected": [{k: v for k, v in r.items() if not k.startswith("_")} for r in rejected],
+    })
+    if verbose:
+        print(f"[W3 iter 0] Resultat: {len(strong)} fortes / {len(weak)} faibles / {len(rejected)} rejetees")
+
+    # === Iterations de raffinement ===
+    for it in range(1, max_iterations):
+        if not weak and not rejected:
+            if verbose:
+                print(f"[W3 iter {it}] Convergence atteinte (aucune regle a raffiner)")
+            break
+
+        if verbose:
+            print(f"\n[W3 iter {it}] Raffinement par {llm_name}...")
+        refine_result = refine_hypotheses(
+            schema_info, strong, weak, rejected,
+            min_support, min_confidence, llm_name, api_key,
+        )
+        next_hyp = refine_result["refinements"] + refine_result["new_hypotheses"]
+        if verbose:
+            print(f"[W3 iter {it}] {len(refine_result['refinements'])} raffinements + {len(refine_result['new_hypotheses'])} nouvelles hypotheses")
+
+        if not next_hyp:
+            if verbose:
+                print(f"[W3 iter {it}] Aucune nouvelle hypothese, arret")
+            break
+
+        strong, weak, rejected = _validate_hypotheses(next_hyp)
+        iteration_log.append({
+            "iteration": it,
+            "hypotheses": next_hyp,
+            "refinements": refine_result["refinements"],
+            "new_hypotheses_proposed": refine_result["new_hypotheses"],
+            "strong": [{k: v for k, v in r.items() if not k.startswith("_")} for r in strong],
+            "weak": [{k: v for k, v in r.items() if not k.startswith("_")} for r in weak],
+            "rejected": [{k: v for k, v in r.items() if not k.startswith("_")} for r in rejected],
+        })
+        if verbose:
+            print(f"[W3 iter {it}] Resultat: {len(strong)} fortes / {len(weak)} faibles / {len(rejected)} rejetees")
+
+    valid_pfds = sorted(
+        accepted_pfds.values(),
+        key=lambda p: (p.confidence, p.support),
+        reverse=True,
+    )
+    from .generalization import generalize_pfds
+    generalized = generalize_pfds(valid_pfds)
+
+    elapsed = time.time() - start_time
+    if verbose:
+        print(f"\n[W3] Termine en {elapsed:.2f}s")
+        print(f"[W3] {len(valid_pfds)} PFDs acceptees au total -- {len(generalized)} apres generalisation")
+        print(f"\n--- Top PFDs (Workflow 3 - {llm_name}) ---")
+        for pfd in generalized[:15]:
+            print(f"  {pfd}")
+
+    return {
+        "pfds": valid_pfds,
+        "generalized": generalized,
+        "iteration_log": iteration_log,
+        "num_iterations": len(iteration_log),
+        "num_candidates": sum(len(log["hypotheses"]) for log in iteration_log),
         "num_valid": len(valid_pfds),
         "num_generalized": len(generalized),
         "execution_time": elapsed,
