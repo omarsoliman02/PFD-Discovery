@@ -372,7 +372,8 @@ W3-Mistral           8         3     0.950    8500.2        17   361.40
 | Document | Description |
 |---|---|
 | [`rapport/rapport.pdf`](rapport/rapport.pdf) | Rapport academique final (25 pages, 8 sections + annexes) |
-| [`GUIDE_SOUTENANCE.md`](GUIDE_SOUTENANCE.md) | Guide pedagogique complet pour la soutenance (de zero a expert) |
+| [`COURS_EXPLIQUE.md`](COURS_EXPLIQUE.md) | **Le cours expliquE de zEro** -- FDs, PFDs, metriques, pipeline (pour novices) |
+| [`GUIDE_SOUTENANCE.md`](GUIDE_SOUTENANCE.md) | Guide pedagogique complet pour la soutenance (code + execution) |
 | [`Approximate_PFDs.pdf`](Approximate_PFDs.pdf) | Specification originale du cours (40 slides du prof) |
 
 ---
