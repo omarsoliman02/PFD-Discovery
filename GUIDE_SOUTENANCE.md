@@ -251,7 +251,7 @@ PatternFD-miniprojet/
 │   ├── CHE/                      #   chimie/biologie
 │   └── DGOV/                     #   gouvernance (criminalité, employés, etc.)
 │
-├── src/                          # Le code Python (1 479 lignes)
+├── src/                          # Le code Python (10 modules)
 │   ├── data_loader.py            # Charge les CSV
 │   ├── pattern_extraction.py     # Définit les 7 transformations
 │   ├── pattern_grouping.py       # Étape 2 : regroupement

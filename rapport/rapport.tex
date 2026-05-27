@@ -275,39 +275,39 @@ Length & \texttt{length(col)} & \og{}Hello\fg{} $\to$ \og{}5\fg{} & Longueur \\
 
 \subsection{Vue d'ensemble}
 
-Le projet est organis\'{e} en modules Python ind\'{e}pendants et r\'{e}utilisables, totalisant environ \textbf{1\,400 lignes de code} r\'{e}parties sur 14 fichiers. L'architecture suit une s\'{e}paration nette entre le c\oe{}ur algorithmique, l'int\'{e}gration LLM et les scripts d'exp\'{e}rimentation.
+Le projet est organis\'{e} en modules Python ind\'{e}pendants et r\'{e}utilisables, r\'{e}partis sur 17 fichiers. L'architecture suit une s\'{e}paration nette entre le c\oe{}ur algorithmique, l'int\'{e}gration LLM et les scripts d'exp\'{e}rimentation.
 
 \begin{table}[H]
 \centering
 \caption{Organisation des modules du projet}
 \label{tab:modules}
 \small
-\begin{tabularx}{\linewidth}{@{}lrX@{}}
+\begin{tabularx}{\linewidth}{@{}lX@{}}
 \toprule
-\textbf{Module} & \textbf{Lignes} & \textbf{R\^{o}le} \\
+\textbf{Module} & \textbf{R\^{o}le} \\
 \midrule
-\texttt{data\_loader.py} & 45 & Chargement CSV, introspection du sch\'{e}ma \\
-\texttt{pattern\_extraction.py} & 152 & D\'{e}finition et application des 7 transformations \\
-\texttt{pattern\_grouping.py} & 38 & Groupement des tuples par pattern \\
-\texttt{candidate\_generation.py} & 43 & G\'{e}n\'{e}ration des paires candidats $(T_X, Y)$ \\
-\texttt{validation.py} & 110 & Calcul du support et de la confidence \\
-\texttt{generalization.py} & 162 & Fusion algorithmique + s\'{e}mantique (LLM) \\
-\texttt{classical\_pipeline.py} & 87 & Orchestration du pipeline en 5 \'{e}tapes \\
-\texttt{llm\_agent.py} & 432 & Mistral/Llama + 5 prompts (W1, W2, W3, gen.\ s\'{e}m.) \\
-\texttt{agentic\_workflow.py} & 419 & Workflows agentiques 1, 2 et 3 \\
-\texttt{evaluation.py} & 124 & M\'{e}triques et comparaison \\
+\multicolumn{2}{l}{\textit{C\oe{}ur algorithmique et integration LLM (\texttt{src/})}} \\
 \midrule
-\textit{Total \texttt{src/}} & \textit{1\,479} & \\
+\texttt{data\_loader.py} & Chargement CSV, introspection du sch\'{e}ma \\
+\texttt{pattern\_extraction.py} & D\'{e}finition et application des 7 transformations \\
+\texttt{pattern\_grouping.py} & Groupement des tuples par pattern \\
+\texttt{candidate\_generation.py} & G\'{e}n\'{e}ration des paires candidats $(T_X, Y)$ \\
+\texttt{validation.py} & Calcul du support et de la confidence \\
+\texttt{generalization.py} & Fusion algorithmique + s\'{e}mantique (LLM) \\
+\texttt{classical\_pipeline.py} & Orchestration du pipeline en 5 \'{e}tapes \\
+\texttt{llm\_agent.py} & Mistral/Llama + 5 prompts (W1, W2, W3, gen.\ s\'{e}m.) \\
+\texttt{agentic\_workflow.py} & Workflows agentiques 1, 2 et 3 \\
+\texttt{evaluation.py} & M\'{e}triques et comparaison \\
 \midrule
-\texttt{run\_classical.py} & 60 & Script classique \\
-\texttt{run\_agentic.py} & 95 & Script W1 et W2 \\
-\texttt{run\_workflow3.py} & 71 & Script W3 (Agent-in-the-Loop) \\
-\texttt{compare\_results.py} & 103 & Comparaison classique vs W1/W2 \\
-\texttt{sensitivity\_analysis.py} & 175 & Analyse de sensibilit\'{e} $K$ et $\theta$ \\
-\texttt{error\_analysis.py} & 175 & Analyse d'erreur W2 \\
-\texttt{run\_llm\_generalization.py} & 137 & G\'{e}n\'{e}ralisation s\'{e}mantique par LLM \\
+\multicolumn{2}{l}{\textit{Scripts d'exp\'{e}rimentation (\texttt{experiments/})}} \\
 \midrule
-\textit{Total g\'{e}n\'{e}ral} & \textit{2\,295} & \\
+\texttt{run\_classical.py} & Script classique \\
+\texttt{run\_agentic.py} & Script W1 et W2 \\
+\texttt{run\_workflow3.py} & Script W3 (Agent-in-the-Loop) \\
+\texttt{compare\_results.py} & Comparaison classique vs W1/W2 \\
+\texttt{sensitivity\_analysis.py} & Analyse de sensibilit\'{e} $K$ et $\theta$ \\
+\texttt{error\_analysis.py} & Analyse d'erreur W2 \\
+\texttt{run\_llm\_generalization.py} & G\'{e}n\'{e}ralisation s\'{e}mantique par LLM \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -1113,7 +1113,7 @@ Ce projet a permis d'impl\'{e}menter et de comparer plusieurs paradigmes pour la
 
 \textbf{Contributions principales :}
 \begin{itemize}
-    \item Impl\'{e}mentation compl\`{e}te en Python ($\sim$2\,300 lignes) avec modules r\'{e}utilisables.
+    \item Impl\'{e}mentation compl\`{e}te en Python avec 17 modules r\'{e}utilisables et bien d\'{e}coupl\'{e}s.
     \item Impl\'{e}mentation des \textbf{trois workflows agentiques} pr\'{e}sent\'{e}s dans le cours (au lieu d'un seul minimum requis).
     \item Comparaison syst\'{e}matique sur 14 datasets r\'{e}els couvrant 3 domaines.
     \item Comparaison de 2 LLMs (Mistral vs.\ Llama) mettant en \'{e}vidence des profils diff\'{e}rents : Mistral est plus pr\'{e}cis et compact, Llama est plus cr\'{e}atif et diversifi\'{e}.

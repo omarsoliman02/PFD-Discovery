@@ -2,39 +2,69 @@
 
 > Mini-projet -- **Pattern-Based Dependencies and Agentic Discovery for Data Quality**
 > Universite Paris Dauphine - PSL | LAMSADE | Cours de Khalid Belhajjame
+> Annee 2025-2026
 
 ---
 
 ## Table des matieres
 
 - [Presentation du projet](#presentation-du-projet)
+- [Demarrage rapide](#demarrage-rapide)
 - [Concepts theoriques](#concepts-theoriques)
-  - [Dependances Fonctionnelles (FDs)](#dependances-fonctionnelles-fds)
-  - [Pattern Functional Dependencies (PFDs)](#pattern-functional-dependencies-pfds)
-  - [PFDs Approximatives](#pfds-approximatives)
-  - [Pipeline classique de decouverte](#pipeline-classique-de-decouverte)
-  - [Approche agentique (IA)](#approche-agentique-ia)
 - [Architecture du projet](#architecture-du-projet)
 - [Installation](#installation)
 - [Guide d'utilisation](#guide-dutilisation)
   - [1. Approche classique](#1-approche-classique)
-  - [2. Approche agentique](#2-approche-agentique)
-  - [3. Comparaison des approches](#3-comparaison-des-approches)
+  - [2. Workflows agentiques (W1, W2, W3)](#2-workflows-agentiques-w1-w2-w3)
+  - [3. Analyses bonus](#3-analyses-bonus)
+  - [4. Comparaison des approches](#4-comparaison-des-approches)
 - [Datasets](#datasets)
-- [Modules detailles](#modules-detailles)
-- [Exemples de resultats](#exemples-de-resultats)
-- [Technologies utilisees](#technologies-utilisees)
+- [Resultats principaux](#resultats-principaux)
+- [Documentation complete](#documentation-complete)
 
 ---
 
 ## Presentation du projet
 
-Ce projet etudie la **decouverte de dependances fonctionnelles basees sur des patterns (PFDs)** dans des donnees reelles. Il compare deux approches :
+Ce projet etudie la **decouverte de dependances fonctionnelles basees sur des patterns (PFDs)** dans des donnees reelles. Il compare deux paradigmes :
 
-1. **Approche classique (algorithmique)** : exploration systematique de toutes les transformations et candidats possibles
-2. **Approche agentique (IA)** : utilisation de LLMs locaux (Mistral, Llama via Ollama) pour guider intelligemment la recherche
+1. **Approche classique** : exploration systematique de toutes les transformations possibles par algorithme deterministe.
+2. **Approche agentique** : utilisation de LLMs locaux (Mistral 7B, Llama 3.1 8B via Ollama) pour guider intelligemment la recherche.
 
 L'objectif est d'evaluer si l'IA agentique ameliore la **qualite**, l'**interpretabilite** et l'**efficacite** de la decouverte de PFDs par rapport a l'approche purement algorithmique.
+
+### Ce que contient ce projet
+
+- L'algorithme classique en 5 etapes (extraction, groupement, candidats, validation, generalisation).
+- **Les TROIS workflows agentiques** presentes dans le cours :
+  - **W1** -- Feature-Enriched Discovery (le LLM suggere les transformations)
+  - **W2** -- Guided Search (le LLM priorise aussi les candidats)
+  - **W3** -- Agent-in-the-Loop (boucle iterative avec feedback)
+- Une **generalisation semantique par LLM** (etape 5 LLM-aware).
+- Une **analyse de sensibilite** aux seuils K et theta.
+- Une **analyse d'erreur** automatique des PFDs manquees.
+- 14 datasets reels (46 351 lignes au total) couvrant 3 domaines.
+- Comparaison Mistral 7B vs Llama 3.1 8B.
+
+---
+
+## Demarrage rapide
+
+```bash
+# 1. Cloner et installer
+git clone https://github.com/omarsoliman02/PFD-Discovery.git
+cd PFD-Discovery
+pip3 install -r requirements.txt
+
+# 2. Installer les LLMs locaux
+brew install ollama && brew services start ollama
+ollama pull mistral && ollama pull llama3.1
+
+# 3. Lancer une demo (3 minutes)
+python3 experiments/compare_results.py --dataset t1 --llm mistral
+```
+
+Pour aller plus loin, consulte le [guide de soutenance complet](GUIDE_SOUTENANCE.md).
 
 ---
 
@@ -42,19 +72,18 @@ L'objectif est d'evaluer si l'IA agentique ameliore la **qualite**, l'**interpre
 
 ### Dependances Fonctionnelles (FDs)
 
-Une **Dependance Fonctionnelle** classique `X -> Y` signifie : si deux lignes ont la meme valeur pour l'attribut X, elles doivent avoir la meme valeur pour Y.
+Une **FD** classique `X -> Y` exprime que deux lignes avec la meme valeur de X doivent avoir la meme valeur de Y.
 
 ```
 Exemple : Department -> Department Name
-Si deux employes sont dans le meme departement "POL",
-alors le nom du departement est toujours "Department of Police".
+Si deux employes ont le code "POL", le nom est toujours "Department of Police".
 ```
 
-**Limitation** : Les FDs comparent des **valeurs entieres**. Elles ne detectent pas les regularites au niveau des patterns (prefixes, tokens, sous-chaines).
+**Limite** : compare des valeurs entieres. Ne capture pas les regularites partielles (prefixes, tokens, sous-chaines).
 
 ### Pattern Functional Dependencies (PFDs)
 
-Une **PFD** `R(X -> Y, Tp)` generalise les FDs en utilisant des **patterns** au lieu de valeurs exactes.
+Une **PFD** s'ecrit `R(X -> Y, Tp)` ou `Tp` est une transformation sur X.
 
 ```
 Exemples :
@@ -63,78 +92,31 @@ Exemples :
 - domain(email) -> organization   ("@google.com" -> Google)
 ```
 
-**Definition formelle** : Si deux tuples matchent le meme pattern sur X, alors ils doivent matcher le meme pattern sur Y.
+### PFDs approximatives
 
-### PFDs Approximatives
-
-Les donnees reelles contiennent du **bruit**. On tolere donc un certain taux de violation :
+Les donnees reelles contiennent du bruit. On tolere donc un certain taux de violation :
 
 | Metrique | Formule | Description |
 |----------|---------|-------------|
-| **Support** | `\|{t in R \| t \|= X}\|` | Nombre de tuples matchant le pattern X |
-| **Confidence** | `\|{t \|= X et t \|= Y}\| / \|{t \|= X}\|` | Proportion de tuples coherents |
+| **Support** | `count(t : t \|= X)` | Tuples couverts par le pattern X |
+| **Confidence** | `coherent / couverts` | Proportion de tuples coherents |
 | **Noise** | `1 - confidence` | Taux de violation tolere |
 
-On garde une regle si : `support >= K` (ex: 5) et `confidence >= theta` (ex: 0.85)
+On garde une regle si `support >= K` (par defaut K=5) et `confidence >= theta` (par defaut theta=0.85).
 
-### Pipeline classique de decouverte
-
-Le pipeline classique suit 5 etapes sequentielles :
+### Pipeline classique
 
 ```
-Donnees brutes
-    |
-    v
-[1. Extraction de patterns]     Prefixes, tokens, n-grams, longueurs...
-    |
-    v
-[2. Groupement]                 Regrouper les tuples par pattern
-    |
-    v
-[3. Generation de candidats]    Toutes les paires pattern(X) -> Y
-    |
-    v
-[4. Validation]                 Calcul support + confidence + seuils
-    |
-    v
-[5. Generalisation]             Fusion de patterns redondants
-    |
-    v
-PFDs decouvertes
+Donnees -> Extraction -> Groupement -> Candidats -> Validation -> Generalisation -> PFDs
 ```
 
-**Limites** :
-- Espace de recherche **enorme** (toutes les combinaisons de transformations et colonnes)
-- **Pas de comprehension semantique** (ne sait pas que "zip" est un code postal)
-- Decouvre des **dependances spurieuses** (coincidences statistiques)
+### Les 3 workflows agentiques
 
-### Approche agentique (IA)
-
-L'idee : utiliser un **LLM** (Large Language Model) pour completer l'algorithme avec du **raisonnement semantique**.
-
-#### Workflow 1 : Feature-Enriched Discovery
-
-```
-Table R --> [Agent LLM] --> Suggere des transformations --> [Algo classique] --> PFDs
-                            pertinentes
-```
-
-L'agent analyse les noms de colonnes et des echantillons de valeurs, puis suggere les transformations qui ont du **sens semantique** (ex: "cette colonne ressemble a un code postal, essaye `prefix(zip, 3)`").
-
-#### Workflow 2 : Guided Search
-
-```
-Table R --> [Agent LLM] --> Suggere transformations    --> [Algo : valide] --> PFDs
-                            + Priorise les candidats
-                              X -> Y prometteurs
-```
-
-L'agent va plus loin : il ne suggere pas seulement les features, il **selectionne les candidats les plus prometteurs** a valider. Cela reduit drastiquement l'espace de recherche.
-
-**Avantages de l'approche agentique** :
-- Moins de candidats explores = **plus rapide**
-- Dependances plus **interpretables** et **significatives**
-- Filtre les resultats **triviaux** ou **sans sens**
+| Workflow | Role du LLM | Reduction de l'espace |
+|---|---|---|
+| **W1** Feature-Enriched | Suggere les transformations | ~87% |
+| **W2** Guided Search | Suggere + priorise les candidats | ~94% |
+| **W3** Agent-in-the-Loop | Boucle iterative LLM <-> algorithme avec feedback | ~97% |
 
 ---
 
@@ -143,51 +125,43 @@ L'agent va plus loin : il ne suggere pas seulement les features, il **selectionn
 ```
 PFD-Discovery/
 |
-|-- Approximate_PFDs.pdf              # Specification du projet (40 slides)
+|-- Approximate_PFDs.pdf              # Specification du projet (40 slides du prof)
+|-- GUIDE_SOUTENANCE.md               # Guide pedagogique complet pour la soutenance
 |
-|-- data/                             # 15 datasets CSV reels
+|-- data/                             # 14 datasets CSV reels
 |   |-- CHE/                          # Chimie / Biologie moleculaire (5 fichiers)
-|   |   |-- mechanism_refs.csv
-|   |   |-- metabolism_refs.csv
-|   |   |-- protein_classification.csv
-|   |   |-- research_companies.csv
-|   |   +-- variant_sequences.csv
-|   |
 |   |-- DGOV/                         # Gouvernance de donnees (5 fichiers)
-|   |   |-- 10492-1.csv
-|   |   |-- 10642-1.csv
-|   |   |-- 570-1.csv
-|   |   |-- 6339-1.csv
-|   |   +-- 6397-1.csv
-|   |
 |   +-- pfd_validation/               # Datasets de validation (4 fichiers)
-|       |-- US_Phone_Code.csv
-|       |-- t1.csv
-|       |-- t2.csv
-|       +-- t3.csv
 |
 |-- src/                              # Code source
-|   |-- __init__.py
 |   |-- data_loader.py                # Chargement et preprocessing CSV
-|   |-- pattern_extraction.py         # Extraction de 7 types de patterns
+|   |-- pattern_extraction.py         # 7 transformations (identity, prefix, suffix, tokens, length...)
 |   |-- pattern_grouping.py           # Groupement de tuples par pattern
 |   |-- candidate_generation.py       # Generation des candidats X -> Y
 |   |-- validation.py                 # Calcul support/confidence + filtrage
-|   |-- generalization.py             # Fusion de patterns redondants
+|   |-- generalization.py             # Fusion algorithmique + semantique (LLM)
 |   |-- classical_pipeline.py         # Pipeline classique complet (5 etapes)
-|   |-- llm_agent.py                  # Integration LLMs locaux (Mistral, Llama via Ollama)
-|   |-- agentic_workflow.py           # Workflow 1 (Feature-Enriched) + Workflow 2 (Guided Search)
+|   |-- llm_agent.py                  # Integration LLMs + 5 prompts (W1/W2/W3 + gen semantique)
+|   |-- agentic_workflow.py           # Workflows agentiques 1, 2 et 3
 |   +-- evaluation.py                 # Metriques d'evaluation et comparaison
 |
 |-- experiments/                      # Scripts d'experimentation
-|   |-- run_classical.py              # Executer l'approche classique sur tous les datasets
-|   |-- run_agentic.py                # Executer les workflows agentiques
-|   +-- compare_results.py            # Comparaison cote a cote classique vs agentique
+|   |-- run_classical.py              # Approche classique sur tous les datasets
+|   |-- run_agentic.py                # W1 et W2 (avec choix du LLM)
+|   |-- run_workflow3.py              # W3 (Agent-in-the-Loop)
+|   |-- compare_results.py            # Comparaison cote-a-cote classique vs W1/W2
+|   |-- sensitivity_analysis.py       # Analyse de sensibilite aux seuils K et theta
+|   |-- error_analysis.py             # Diagnostic des PFDs manquees par les LLMs
+|   +-- run_llm_generalization.py     # Generalisation semantique par LLM
 |
-|-- results/                          # Resultats sauvegardes (JSON)
+|-- results/                          # Resultats sauvegardes (JSON, gitignore)
 |
-|-- requirements.txt                  # Dependances Python
-+-- README.md
+|-- rapport/
+|   |-- rapport.tex                   # Source LaTeX
+|   +-- rapport.pdf                   # Rapport academique final (25 pages)
+|
+|-- requirements.txt                  # Dependances Python (pandas)
++-- README.md                         # Ce fichier
 ```
 
 ---
@@ -197,7 +171,8 @@ PFD-Discovery/
 ### Prerequis
 
 - **Python 3.10+**
-- **Ollama** (pour les modeles locaux -- zero quota, gratuit, offline)
+- **Ollama** (pour les LLMs locaux -- zero quota, gratuit, offline)
+- **8 Go de RAM minimum** (16 Go recommandes pour confort)
 
 ### Etapes
 
@@ -207,21 +182,32 @@ git clone https://github.com/omarsoliman02/PFD-Discovery.git
 cd PFD-Discovery
 
 # 2. Installer les dependances Python
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 
-# 3. Installer Ollama (modeles locaux)
+# 3. Installer Ollama
+# Sur Mac :
 brew install ollama
 brew services start ollama
+
+# Sur Linux :
+curl -fsSL https://ollama.com/install.sh | sh
+sudo systemctl start ollama
+
+# 4. Telecharger les modeles LLM
 ollama pull mistral        # Mistral 7B (~4.4 Go)
 ollama pull llama3.1       # Llama 3.1 8B (~4.9 Go)
+
+# 5. Verifier que tout marche
+curl http://localhost:11434/api/tags
+# Doit renvoyer un JSON listant mistral et llama3.1
 ```
 
 ### LLMs disponibles
 
-| Modele | Type | Quota | RAM requise | Commande |
-|--------|------|-------|-------------|----------|
-| **Mistral 7B** | Local (Ollama) | Illimite | ~6 Go | `--llm mistral` |
-| **Llama 3.1 8B** | Local (Ollama) | Illimite | ~7 Go | `--llm llama` |
+| Modele | Type | Quota | RAM | Style |
+|---|---|---|---|---|
+| **Mistral 7B** | Local (Ollama) | Illimite | ~6 Go | Conservateur, precis |
+| **Llama 3.1 8B** | Local (Ollama) | Illimite | ~7 Go | Creatif, diversifie |
 
 ---
 
@@ -229,16 +215,14 @@ ollama pull llama3.1       # Llama 3.1 8B (~4.9 Go)
 
 ### 1. Approche classique
 
-L'approche classique **ne necessite pas de cle API**. Elle explore toutes les transformations possibles de maniere systematique.
-
 ```bash
-# Executer sur TOUS les datasets
+# Sur tous les datasets
 python3 experiments/run_classical.py
 
-# Les resultats sont affiches dans le terminal et sauvegardes dans results/
+# Les resultats sont affiches et sauvegardes dans results/
 ```
 
-**Parametres ajustables** (dans `run_classical.py`) :
+**Parametres ajustables** :
 
 | Parametre | Defaut | Description |
 |-----------|--------|-------------|
@@ -246,37 +230,17 @@ python3 experiments/run_classical.py
 | `MIN_CONFIDENCE` | 0.85 | Confidence minimum pour garder une regle |
 | `MAX_PREFIX_LEN` | 4 | Longueur maximale des prefixes explores |
 
-**Exemple de sortie** :
-```
-=== t1.csv ===
-Shape: (9101, 9)
+### 2. Workflows agentiques (W1, W2, W3)
 
-[1/5] Extraction: 59 transformations generees
-[2-3/5] Candidats: 472 paires X -> Y a evaluer
-[4/5] Validation: 123 PFDs valides trouvees
-[5/5] Generalisation: 85 PFDs apres generalisation
-
-Temps d'execution: 6.70s
-
---- Top PFDs decouvertes ---
-  identity(Department) -> Department Name   [support=9090, conf=1.000]
-  identity(Division) -> Department          [support=8527, conf=0.987]
-  first_token(Position Title) -> Assignment Category [support=8999, conf=0.958]
-```
-
-### 2. Approche agentique
-
-Utilise les **modeles locaux** via Ollama -- aucune cle API requise, zero quota.
+#### W1 et W2 (Feature-Enriched et Guided Search)
 
 ```bash
-# Mistral + Llama sur tous les datasets
+# Tous les datasets, Mistral + Llama
 python3 experiments/run_agentic.py
 
-# Seulement Mistral sur le dataset t1
-python3 experiments/run_agentic.py --llm mistral --dataset t1
-
-# Seulement Workflow 1 avec Llama
-python3 experiments/run_agentic.py --llm llama --workflow 1
+# Cibler un LLM et un dataset
+python3 experiments/run_agentic.py --llm mistral --workflow 2 --dataset t1
+python3 experiments/run_agentic.py --llm llama --workflow 1 --dataset t2
 ```
 
 **Options** :
@@ -285,31 +249,65 @@ python3 experiments/run_agentic.py --llm llama --workflow 1
 |--------|---------|-------------|
 | `--llm` | `mistral`, `llama`, `all` | LLM a utiliser |
 | `--dataset` | nom du fichier (ex: `t1`) | Filtrer par dataset |
-| `--workflow` | `1` ou `2` | Numero du workflow |
+| `--workflow` | `1` ou `2` | Workflow a executer |
 
-### 3. Comparaison des approches
-
-Le script `compare_results.py` execute **les 3 approches** (classique + W1 + W2) sur un meme dataset et affiche un tableau comparatif.
+#### W3 (Agent-in-the-Loop)
 
 ```bash
-# Comparaison avec modeles locaux (par defaut)
-python3 experiments/compare_results.py --dataset t1
+# Demo rapide sur petit dataset (~2 min)
+python3 experiments/run_workflow3.py --dataset US_Phone_Code --llm mistral --iterations 2
 
-# Comparaison avec un seul LLM
-python3 experiments/compare_results.py --dataset t2 --llm mistral
+# Vrai test sur t1.csv (~6 min)
+python3 experiments/run_workflow3.py --dataset t1 --llm mistral --iterations 3
 ```
 
-**Resultats reels (t1.csv -- 9101 employes gouvernementaux)** :
+### 3. Analyses bonus
+
+#### Analyse de sensibilite aux seuils
+
+```bash
+# Classique uniquement (rapide, ~2 min)
+python3 experiments/sensitivity_analysis.py --dataset t1 \
+  --thetas 0.85,0.90,0.95,1.00 --supports 5,10,20
+
+# Avec workflows agentiques inclus (lent, ~30 min)
+python3 experiments/sensitivity_analysis.py --dataset t1 \
+  --thetas 0.85,0.95 --supports 5 --include-agentic --llm mistral
 ```
-------------------------------------------------------------------------------------------------------------------------
-Approche                              PFDs  Parfaites  Interes.   Conf.moy  Supp.moy  Candidats  Temps(s)
-------------------------------------------------------------------------------------------------------------------------
-Classique                               85         2        64     0.9133     7481.9       616     10.42
-W1-mistral                              23         2         4     0.9310     6747.4        72     70.75
-W2-mistral                              10         0         1     0.9386     5736.9        34     51.76
-W1-llama                                12         0        12     0.9150     7804.3        40     62.52
-W2-llama                                21         2         0     0.9335     7144.9        74     99.51
-------------------------------------------------------------------------------------------------------------------------
+
+#### Analyse d'erreur (PFDs manquees par W2)
+
+```bash
+python3 experiments/error_analysis.py --dataset t1 --llm mistral
+# Diagnostique pourquoi le LLM rate certaines PFDs parfaites
+```
+
+#### Generalisation semantique par LLM
+
+```bash
+python3 experiments/run_llm_generalization.py --dataset t1 --llm mistral
+# Affiche les concepts metier formes par le LLM (au lieu de la dedup syntaxique)
+```
+
+### 4. Comparaison des approches
+
+```bash
+# Tableau recapitulatif classique vs W1 vs W2 sur un dataset
+python3 experiments/compare_results.py --dataset t1 --llm mistral
+
+# Comparer les deux LLMs
+python3 experiments/compare_results.py --dataset t1 --llm all
+```
+
+**Exemple de sortie** (sur t1.csv) :
+
+```
+Approche          PFDs  Parfaites  Conf.moy  Supp.moy  Candidats  Temps(s)
+------------------------------------------------------------------------------
+Classique           85         2     0.913    7481.9       544     8.50
+W1-Mistral          23         2     0.931    6747.4        72    70.75
+W2-Mistral          19         2     0.939    5736.9        34    51.76
+W3-Mistral           8         3     0.950    8500.2        17   361.40
 ```
 
 ---
@@ -318,93 +316,64 @@ W2-llama                                21         2         0     0.9335     71
 
 ### pfd_validation/ -- Datasets de validation
 
-| Fichier | Lignes | Colonnes | PFDs attendues |
-|---------|--------|----------|----------------|
-| `US_Phone_Code.csv` | 51 | State, Short, Code | State -> Short (toutes uniques) |
-| `t1.csv` | 9101 | Full Name, Gender, Department, ... | Department -> Department Name, first_token(Name) -> Gender |
-| `t2.csv` | 3502 | NAME, CITY, STATE, ZIP, ... | prefix(ZIP,3) -> CITY, STATE -> patterns |
-| `t3.csv` | 3230 | Licensee Name, City, State, Zip, ... | City -> State, prefix(Zip,5) -> City |
+| Fichier | Lignes | Domaine |
+|---------|--------|---------|
+| `US_Phone_Code.csv` | 51 | Codes telephoniques US |
+| `t1.csv` | 9 101 | Employes gouvernementaux |
+| `t2.csv` | 3 502 | Entreprises commerciales |
+| `t3.csv` | 1 077 | Licences commerciales |
 
-### CHE/ -- Chimie et Biologie moleculaire
+### CHE/ -- Chimie et biologie moleculaire
 
 | Fichier | Lignes | Domaine |
 |---------|--------|---------|
-| `mechanism_refs.csv` | 9561 | References de mecanismes pharmaceutiques (PubMed, DailyMed) |
-| `metabolism_refs.csv` | 2410 | References de metabolisme de medicaments |
-| `protein_classification.csv` | 859 | Taxonomie hierarchique des proteines |
-| `research_companies.csv` | 813 | Entreprises de recherche pharmaceutique par pays |
-| `variant_sequences.csv` | 1201 | Variants de sequences proteiques et mutations |
+| `mechanism_refs.csv` | 9 536 | References pharmaceutiques |
+| `metabolism_refs.csv` | 2 409 | Metabolisme de medicaments |
+| `protein_classification.csv` | 858 | Taxonomie des proteines |
+| `research_companies.csv` | 812 | Entreprises pharma |
+| `variant_sequences.csv` | 1 200 | Variants de sequences |
 
 ### DGOV/ -- Gouvernance de donnees
 
 | Fichier | Lignes | Domaine |
 |---------|--------|---------|
-| `570-1.csv` | 9101 | Employes gouvernementaux (noms, departements, postes) |
-| `10492-1.csv` | 3230 | Licences commerciales (noms, adresses, types) |
-| `10642-1.csv` | 2767 | Agences d'emploi par ville/ZIP |
-| `6339-1.csv` | 307 | Statistiques de criminalite par ville |
-| `6397-1.csv` | 6705 | Donnees demographiques/census |
+| `570-1.csv` | 9 101 | Employes gouvernementaux |
+| `10492-1.csv` | 1 077 | Licences commerciales |
+| `10642-1.csv` | 920 | Agences d'emploi |
+| `6339-1.csv` | 306 | Statistiques de criminalite |
+| `6397-1.csv` | 6 704 | Donnees demographiques |
 
 ---
 
-## Modules detailles
+## Resultats principaux
 
-### `pattern_extraction.py` -- 7 types de transformations
+### Comparaison globale sur t1.csv (9 101 employes)
 
-| Transformation | Exemple | Usage typique |
-|----------------|---------|---------------|
-| `identity(col)` | "Chicago" -> "Chicago" | Colonnes categoriques |
-| `prefix(col, k)` | prefix("90012", 3) -> "900" | Codes postaux, numeros |
-| `suffix(col, k)` | suffix("report.pdf", 3) -> "pdf" | Extensions, suffixes |
-| `first_token(col)` | first_token("John Smith") -> "John" | Prenoms, premiers mots |
-| `last_token(col)` | last_token("John Smith") -> "Smith" | Noms de famille |
-| `numeric_prefix(col, k)` | numeric_prefix("ZIP-90012", 3) -> "900" | Codes avec bruit |
-| `length(col)` | length("Hello") -> "5" | Longueur de chaine |
+| Approche | Candidats | PFDs | Parfaites | Temps |
+|---|---|---|---|---|
+| Classique | 544 | 85 | 2 | 8.5 s |
+| W1-Mistral | 72 | 23 | 2 | 71 s |
+| W2-Mistral | 34 | 19 | 2 | 52 s |
+| W2-Llama | 74 | 21 | 2 | 100 s |
+| **W3-Mistral** | **17** | 8 | **3** | 361 s |
 
-### `validation.py` -- Metriques
+### Enseignements
 
-Pour chaque candidat `pattern(X) -> Y` :
-1. **Grouper** les tuples par valeur du pattern X
-2. Pour chaque groupe, trouver la **valeur majoritaire** de Y
-3. **Support** = nombre total de tuples couverts par les groupes
-4. **Confidence** = tuples coherents / tuples totaux
-5. **Filtrer** par seuils : `support >= K` et `confidence >= theta`
-
-### `llm_agent.py` -- Integration LLM
-
-- **Mistral 7B** (local) : via Ollama REST API, sans quota, offline
-- **Llama 3.1 8B** (local) : via Ollama REST API, sans quota, offline
-
-Deux types de prompts :
-1. **Suggestion de transformations** : le LLM analyse le schema et suggere les transformations pertinentes
-2. **Priorisation de candidats** : le LLM classe les paires X -> Y par pertinence semantique
-
-### `generalization.py` -- Strategies de generalisation
-
-1. Parmi les prefixes `prefix(col, 1)`, `prefix(col, 2)`, ..., garder le **plus court** avec une bonne confidence
-2. Si `identity(col)` a une bonne confidence, elle **subsume** les transformations sur la meme colonne
-3. Eliminer les **doublons** par type de transformation
+- **Classique** : exhaustif et rapide, mais beaucoup de regles bruitees.
+- **W1/W2** : reduction massive de l'espace de recherche (~87-94%), confidence moyenne superieure.
+- **W3** : capacite d'**auto-correction** observee ; trouve plus de PFDs parfaites avec moins de candidats.
+- **theta domine K** : l'analyse de sensibilite montre que la confidence minimale impacte beaucoup plus que le support minimal.
+- **Prompt engineering critique** : un biais Mistral envers `identity(col)` a ete identifie puis corrige par modification du prompt.
 
 ---
 
-## Exemples de resultats
+## Documentation complete
 
-### Resultats classiques sur t1.csv (employes gouvernementaux)
-
-| PFD | Support | Confidence |
-|-----|---------|------------|
-| `identity(Department) -> Department Name` | 9090 | 1.000 |
-| `identity(Division) -> Department` | 8527 | 0.987 |
-| `identity(Position Title) -> Assignment Category` | 8769 | 0.974 |
-| `first_token(Position Title) -> Assignment Category` | 8999 | 0.958 |
-
-### Resultats classiques sur t2.csv (entreprises)
-
-| PFD | Support | Confidence |
-|-----|---------|------------|
-| `identity(NAME) -> COUNTRY` | 1994 | 1.000 |
-| `identity(EMPLOYER_ID) -> NAME` | 404 | 1.000 |
-| `identity(EMPLOYER_ID) -> CITY` | 404 | 1.000 |
+| Document | Description |
+|---|---|
+| [`rapport/rapport.pdf`](rapport/rapport.pdf) | Rapport academique final (25 pages, 8 sections + annexes) |
+| [`GUIDE_SOUTENANCE.md`](GUIDE_SOUTENANCE.md) | Guide pedagogique complet pour la soutenance (de zero a expert) |
+| [`Approximate_PFDs.pdf`](Approximate_PFDs.pdf) | Specification originale du cours (40 slides du prof) |
 
 ---
 
@@ -414,14 +383,20 @@ Deux types de prompts :
 |-------------|-------|
 | **Python 3.10+** | Langage principal |
 | **pandas** | Manipulation de donnees CSV |
-| **Ollama** | Serveur de LLMs locaux (Mistral 7B, Llama 3.1 8B) -- sans quota, offline |
+| **Ollama** | Serveur de LLMs locaux (REST API sur localhost:11434) |
+| **Mistral 7B** + **Llama 3.1 8B** | LLMs locaux pour les workflows agentiques |
+| **LaTeX** | Generation du rapport academique |
 
 ---
 
 ## Auteurs
 
-- Omar Soliman
+- **SOLIMAN** Omar
+- **DERRADJI** Fahd
+- **HADDAR** Djena
+- **TSOULI** Abderrahmane
+- **KARAOUANE** Guillaume
 
 ## Licence
 
-Projet academique -- Universite Paris Dauphine - PSL, 2026.
+Projet academique -- Universite Paris Dauphine - PSL, 2025-2026.
