@@ -1,0 +1,135 @@
+% Schema d'architecture du projet PFD-Discovery
+% Compilation : pdflatex architecture.tex  -> architecture.pdf
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage[paperwidth=29.7cm, paperheight=16.5cm, margin=7mm]{geometry}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta, fit, backgrounds, calc}
+\pagestyle{empty}
+
+% Palette
+\definecolor{cBlue}{HTML}{2563EB}\definecolor{cBlueBg}{HTML}{EFF6FF}
+\definecolor{cOrange}{HTML}{C2410C}\definecolor{cOrangeBg}{HTML}{FFF7ED}
+\definecolor{cGray}{HTML}{475569}\definecolor{cGrayBg}{HTML}{F1F5F9}
+\definecolor{cGreen}{HTML}{15803D}\definecolor{cGreenBg}{HTML}{F0FDF4}
+\definecolor{cInk}{HTML}{0F172A}
+\definecolor{cBand}{HTML}{CBD5E1}
+
+\newcommand{\swatch}[1]{\textcolor{#1}{\rule{2.4mm}{2.4mm}}}
+
+\begin{document}
+\begin{center}
+\begin{tikzpicture}[
+  font=\sffamily,
+  >={Stealth[length=2.4mm]},
+  node distance=5mm and 6mm,
+  box/.style={rounded corners=3pt, draw, line width=0.9pt, align=center,
+              inner sep=4pt, minimum height=1.05cm, text=cInk, font=\small},
+  io/.style={box, draw=cGray, fill=white},
+  classic/.style={box, draw=cBlue, fill=cBlueBg},
+  llm/.style={box, draw=cOrange, fill=cOrangeBg},
+  algo/.style={box, draw=cBlue, fill=cBlueBg},
+  shared/.style={box, draw=cGray, fill=cGrayBg},
+  ok/.style={box, draw=cGreen, fill=cGreenBg},
+  flow/.style={->, line width=1pt, draw=cGray!90},
+  loop/.style={<->, line width=1pt, draw=cOrange, dashed},
+  sec/.style={font=\sffamily\bfseries\footnotesize, text=cGray},
+  note/.style={font=\sffamily\scriptsize, text=cGray},
+  wfname/.style={font=\sffamily\bfseries, text=cOrange},
+]
+
+% ============ TITRE ============
+\node[font=\sffamily\Large\bfseries, text=cInk] (title) {PFD-Discovery — Architecture};
+\node[note, below=0pt of title]
+  {Decouverte de Pattern Functional Dependencies approximatives \quad|\quad Approche classique vs.\ agentique (LLM)};
+
+% ============ ENTREE (0) ============
+\node[io, below=7mm of title.south, anchor=north, xshift=-58mm] (csv)
+  {Fichiers CSV\\{\scriptsize 14 datasets — t1 : 9101$\times$9}};
+\node[io, right=of csv] (loader)
+  {\texttt{data\_loader}\\{\scriptsize nettoyage + schema}};
+\draw[flow] (csv) -- (loader);
+
+% ============ PIPELINE CLASSIQUE (A) ============
+\node[classic, below=13mm of csv.south west, anchor=north west] (e1)
+  {1. Extraction\\{\scriptsize 68 transformations}};
+\node[classic, right=of e1] (e2) {2. Groupement\\{\scriptsize par valeur}};
+\node[classic, right=of e2] (e3) {3. Candidats\\{\scriptsize 544 paires X$\to$Y}};
+\node[classic, right=of e3] (e4) {4. Validation\\{\scriptsize support + confidence}};
+\node[classic, right=of e4] (e5) {5. Generalisation\\{\scriptsize 143 $\to$ 85 PFDs}};
+\foreach \a/\b in {e1/e2, e2/e3, e3/e4, e4/e5} \draw[flow] (\a) -- (\b);
+
+\begin{scope}[on background layer]
+  \node[fill=cBlueBg, rounded corners=5pt, draw=cBand, dashed,
+        fit=(e1)(e5), inner sep=5.5mm] (classband) {};
+\end{scope}
+\node[sec, anchor=south west] at ([yshift=1mm]classband.north west)
+  {A. PIPELINE CLASSIQUE {\normalfont\scriptsize (100\,\% algorithmique, ${\sim}9$\,s)}};
+
+% ============ WORKFLOWS AGENTIQUES (B) ============
+% Lignes espacees a partir des BOITES (w*l), pas des petites etiquettes W1/W2/W3.
+\node[llm, below=16mm of e1.south west, anchor=north west, text width=54mm] (w1l)
+  {LLM : suggere les transformations pertinentes};
+\node[algo, right=14mm of w1l, text width=54mm] (w1a)
+  {Algo : candidats $\to$ validation $\to$ generalisation};
+\node[wfname, left=4mm of w1l] (w1) {W1};
+\draw[flow] (w1l) -- (w1a);
+\node[note, right=3mm of w1a] {${\sim}{-}87\%$ candidats};
+
+\node[llm, below=7mm of w1l.south west, anchor=north west, text width=54mm] (w2l)
+  {LLM : transformations \textbf{+} priorise les candidats X$\to$Y};
+\node[algo, right=14mm of w2l, text width=54mm] (w2a)
+  {Algo : valide seulement les candidats retenus};
+\node[wfname, left=4mm of w2l] (w2) {W2};
+\draw[flow] (w2l) -- (w2a);
+\node[note, right=3mm of w2a] {${\sim}{-}94\%$};
+
+\node[llm, below=7mm of w2l.south west, anchor=north west, text width=54mm] (w3l)
+  {LLM : propose des hypotheses, puis les raffine};
+\node[algo, right=14mm of w3l, text width=54mm] (w3a)
+  {Algo : valide (support/conf.), renvoie un feedback};
+\node[wfname, left=4mm of w3l] (w3) {W3};
+\draw[loop] (w3l) -- node[above=0.5mm, note, text=cOrange]{boucle} (w3a);
+\node[note, right=3mm of w3a, align=left] {${\sim}{-}97\%$\\auto-correction};
+
+\begin{scope}[on background layer]
+  \node[fill=cOrangeBg, rounded corners=5pt, draw=cBand, dashed,
+        fit=(w1)(w1l)(w1a)(w3)(w3a), inner sep=5mm] (agentband) {};
+\end{scope}
+\node[sec, anchor=south west] at ([yshift=1mm]agentband.north west)
+  {B. WORKFLOWS AGENTIQUES {\normalfont\scriptsize (le LLM guide la recherche — Mistral / Llama via Ollama)}};
+
+% ============ MODULES PARTAGES (C) ============
+\node[shared, below=14mm of agentband.south west, anchor=north west, text width=33mm] (m1)
+  {\texttt{pattern\_extraction}\\{\scriptsize identity, prefix, suffix, tokens, length}};
+\node[shared, right=of m1, text width=33mm] (m2)
+  {\texttt{validation}\\{\scriptsize support \& confidence}};
+\node[shared, right=of m2, text width=33mm] (m3)
+  {\texttt{generalization}\\{\scriptsize dedup algo.\ ou semantique}};
+\node[shared, right=of m3, text width=33mm] (m4)
+  {\texttt{llm\_agent}\\{\scriptsize 5 prompts + Ollama}};
+\node[sec, anchor=south west] at ([yshift=1mm]m1.north west) {C. MODULES PARTAGES};
+
+% ============ EVALUATION (D) ============
+\node[ok, right=16mm of m4, text width=38mm] (eval)
+  {\textbf{Evaluation \& comparaison}\\{\scriptsize nb PFDs, parfaites, confiance, candidats, temps $\to$ \texttt{results/*.json}}};
+\node[sec, anchor=south west] at ([yshift=1mm]eval.north west) {D. SORTIE};
+
+% liens conceptuels
+\draw[flow, draw=cBand, line width=1.2pt] (classband.south) -- ++(0,-3mm) -| (m2.north);
+\draw[flow, draw=cBand, line width=1.2pt] (agentband.south) -- ++(0,-3mm) -| (m3.north);
+\draw[flow] (m4.east) -- (eval.west);
+
+% ============ LEGENDE ============
+\node[draw=cBand, rounded corners=3pt, inner sep=4pt, anchor=north east,
+      font=\scriptsize, align=left, text=cInk] at ([yshift=-2mm]title.north east -| eval.east) {%
+  \swatch{cBlue}~Etape algorithmique\\
+  \swatch{cOrange}~Intervention du LLM\\
+  \swatch{cGray}~Module partage\\
+  \swatch{cGreen}~Sortie};
+
+\end{tikzpicture}
+\end{center}
+\end{document}

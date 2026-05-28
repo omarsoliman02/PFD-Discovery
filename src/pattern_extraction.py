@@ -104,7 +104,7 @@ def apply_transformation(df: pd.DataFrame, transf: Transformation) -> pd.Series:
         raise ValueError(f"Transformation inconnue: {transf.name}")
 
 
-def generate_default_transformations(df: pd.DataFrame, max_prefix_len: int = 5) -> list[Transformation]:
+def generate_default_transformations(df: pd.DataFrame, max_prefix_len: int = 4) -> list[Transformation]:
     """Genere un ensemble de transformations par defaut pour toutes les colonnes."""
     transformations = []
 

@@ -20,7 +20,7 @@ def run_classical_pipeline(
     df: pd.DataFrame,
     min_support: int = 2,
     min_confidence: float = 0.8,
-    max_prefix_len: int = 5,
+    max_prefix_len: int = 4,
     transformations: list[Transformation] | None = None,
     target_columns: list[str] | None = None,
     verbose: bool = True,

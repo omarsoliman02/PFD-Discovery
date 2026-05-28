@@ -62,7 +62,9 @@ Une bonne PFD :
 - Couvre un grand nombre de tuples (bon support)
 - A une haute confidence (la plupart des tuples dans un groupe ont la meme valeur Y)
 
-IMPORTANT : pour les colonnes categoriques avec peu de valeurs uniques (codes de departement, ID, abbreviations), n'oublie PAS de proposer la transformation identity(col) qui correspond aux Dependances Fonctionnelles classiques (souvent confidence = 1.0).
+IMPORTANT : pour les colonnes categoriques avec peu de valeurs uniques (codes de departement, ID, abbreviations), n'oublie PAS de proposer la transformation identity(col) qui correspond aux Dependances Fonctionnelles classiques (souvent confidence = 1.0). Mais la colonne cible Y doit etre une AUTRE colonne (ex: identity(Department) -> Department Name).
+
+REGLE ABSOLUE : x_transformation et y_column doivent porter sur des colonnes DIFFERENTES. Ne propose JAMAIS une regle triviale X -> X (ex: identity(Gender) -> Gender), elle n'a aucun interet.
 
 Reponds UNIQUEMENT en JSON avec ce format exact :
 {{
@@ -104,7 +106,7 @@ Une PFD a la forme : transformation(X) -> Y, ou X et Y sont parmi les colonnes c
 - numeric_prefix(col, k) : k premiers chiffres
 - length(col) : longueur
 
-Propose 4 a 8 hypotheses qui semblent semantiquement pertinentes. X et Y DOIVENT etre des colonnes existantes (recopiees du schema ci-dessus).
+Propose 4 a 8 hypotheses qui semblent semantiquement pertinentes. X et Y DOIVENT etre des colonnes existantes (recopiees du schema ci-dessus) et DIFFERENTES l'une de l'autre (jamais X -> X, ex: identity(Gender) -> Gender est interdit).
 
 Reponds UNIQUEMENT en JSON :
 {{

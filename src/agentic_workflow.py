@@ -81,6 +81,12 @@ def _parse_candidate_string(candidate_str: str, columns: list[str]) -> tuple[Tra
     if actual_t_col is None or actual_y_col is None:
         return None
 
+    # Eviter les PFDs triviales X -> X (une colonne ne se predit pas elle-meme).
+    # Coherent avec generate_candidates() du pipeline classique : sinon le LLM
+    # propose parfois identity(Gender) -> Gender, accepte a tort comme conf=1.0.
+    if actual_t_col == actual_y_col:
+        return None
+
     transf = Transformation(name=t_name, column=actual_t_col, params=params)
     return (transf, actual_y_col)
 
@@ -306,6 +312,9 @@ def workflow3_agent_in_the_loop(
             if not parsed:
                 continue
             transf, actual_y = parsed
+            # min_support=1 : on calcule le support reel de chaque hypothese (y compris
+            # petits groupes) pour donner un feedback complet au LLM ; le tri strong/
+            # weak/rejected applique ensuite le seuil min_support reel ci-dessous.
             result = validate_candidate(df, transf, actual_y, min_support=1)
 
             row = {
