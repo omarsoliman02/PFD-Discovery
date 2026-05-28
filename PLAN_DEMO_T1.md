@@ -29,7 +29,56 @@ Si les 3 lignes répondent bien → tu es prêt. **Garde Ollama lancé.**
 
 ---
 
-## 🎬 La démo en 3 actes (~5 min de commandes + ta narration)
+## ⏱️ Minutage cible (~4-5 min de parole au total)
+
+| Temps | Étape | Tu parles |
+|---|---|---|
+| 0:00 – 2:00 | **Partie 1 — Architecture** (schéma `architecture.pdf`) | ~2 min |
+| 2:00 – 2:45 | Acte 1 — Classique sur t1 | ~45 s |
+| 2:45 – 3:45 | Acte 2 — W2 guidé par le LLM | ~1 min |
+| 3:45 – 4:45 | Acte 3 — W3 auto-correction | ~1 min |
+| 4:45 – 5:00 | Phrase de conclusion | ~15 s |
+
+> **Astuce timing :** lance la commande PUIS parle pendant qu'elle calcule (le LLM met ~1 min) —
+> aucun temps mort. Si tu n'as que **4 min** : fais Partie 1 + Actes 1 et 2, et **décris** W3 à l'oral sans le lancer.
+
+---
+
+## 🎤 Partie 1 — Explication de l'architecture (~2 min, à dire)
+
+> **Ouvre `rapport/architecture.pdf`** et parle en suivant les zones (0 → A → B → C/D).
+> Texte à lire / adapter (pointe le schéma au fur et à mesure) :
+
+> « Notre projet part d'une question simple : peut-on découvrir **automatiquement** les règles cachées
+> d'un jeu de données — par exemple *“le code de département détermine le nom du département”* — et
+> est-ce qu'une **IA** fait mieux qu'un algorithme classique ? On compare donc deux approches.
+>
+> *[Zone 0, en haut]* Tout part d'un fichier **CSV**. Le module `data_loader` le nettoie et en extrait
+> le **schéma** : la liste des colonnes avec quelques exemples de valeurs.
+>
+> *[Zone A, bleue]* La première approche est **classique**, en cinq étapes. On génère des
+> **transformations** sur les colonnes — par exemple les préfixes, ou le premier mot. On **regroupe**
+> les lignes qui ont la même valeur transformée. On forme tous les **candidats** “X détermine Y”. On les
+> **valide** avec deux mesures : le **support** — combien de lignes la règle couvre — et la **confiance** —
+> le pourcentage de lignes cohérentes. Enfin on **généralise** pour fusionner les doublons. C'est
+> exhaustif et très rapide, mais ça produit beaucoup de règles sans intérêt sémantique.
+>
+> *[Zone B, orange]* La deuxième approche est **agentique** : on fait intervenir un **LLM** — Mistral ou
+> Llama — qui tourne **en local** via Ollama, donc gratuit, hors-ligne et confidentiel. On a **trois
+> workflows**, avec un rôle **croissant** de l'IA. **W1** : le LLM suggère les bonnes transformations.
+> **W2** : il **priorise** en plus les candidats. **W3** : il propose des hypothèses, l'algorithme les
+> valide et lui renvoie un **retour**, et il **se corrige** tout seul, en boucle.
+>
+> *[Zones C et D, en bas]* Point clé : les deux approches partagent les **mêmes modules de validation**,
+> et chaque hypothèse de l'IA est **revérifiée sur les vraies données** — donc même si le LLM invente une
+> colonne, on la rejette. Tout finit dans le module d'**évaluation**, qui compare les deux approches.
+> Et c'est ce qu'on va voir maintenant en direct. »
+
+👉 Enchaîne directement sur la démo (Partie 2). La dernière phrase sert de transition.
+
+---
+
+## 🎬 Partie 2 — La démo en 3 actes (~2,5 min)
 
 ### Acte 1 — Le classique sur t1 (rapide, ~12 s)
 
@@ -155,9 +204,8 @@ Si le W3 sur t1 affiche `identity(Full Name) → Gender` (ou `→ Position Title
 
 ---
 
-## 🗺️ Pour présenter l'architecture
+## 🗂️ Fichiers à garder ouverts pendant la soutenance
 
-Ouvre **`rapport/architecture.pdf`** → schéma paysage propre, à projeter ou à intégrer dans tes slides.
-Il résume : Entrée → Pipeline classique (5 étapes) → 3 workflows agentiques → Modules partagés → Évaluation,
-avec le code couleur **bleu = algorithme / orange = LLM**.
-Source LaTeX modifiable : `rapport/architecture.tex` (recompiler : `cd rapport && pdflatex architecture.tex`).
+- **`rapport/architecture.pdf`** — le schéma à projeter pour la Partie 1 (source modifiable : `rapport/architecture.tex`).
+- **Ce fichier (`PLAN_DEMO_T1.md`)** — sur un 2ᵉ écran/téléphone pour suivre le minutage et les phrases.
+- Un **terminal** dans `~/Desktop/PatternFD-miniprojet`, Ollama lancé.
